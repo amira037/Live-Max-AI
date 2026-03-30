@@ -8,36 +8,40 @@
   "orientation": "any",
   "background_color": "#080a0e",
   "theme_color": "#080a0e",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/icon-72x72.png",
+      "src": "/live-max-ai/icons/icon-72x72.png",
       "sizes": "72x72",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icons/icon-72x72-maskable.png",
+      "src": "/live-max-ai/icons/icon-72x72-maskable.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/icon-192x192.png",
+      "src": "/live-max-ai/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icons/icon-192x192-maskable.png",
+      "src": "/live-max-ai/icons/icon-192x192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "/live-max-ai/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icons/icon-512x512-maskable.png",
+      "src": "/live-max-ai/icons/icon-512x512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
