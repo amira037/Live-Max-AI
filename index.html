@@ -647,7 +647,7 @@ input[type=range] {
       <div class="cards-scroll" id="cards-scroll">
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">🎚️</span>
-          <span class="empty-text">MaxAI 버튼을 눌러<br>5초 믹스를 분석해보세요</span>
+          <span class="empty-text">MaxAI 버튼을 눌러<br>7초 믹스를 분석해보세요</span>
         </div>
         <div id="analysis-list"></div>
       </div>
@@ -1342,7 +1342,7 @@ ${memo}
             {text:prompt},
             {inline_data:{mime_type:'audio/webm',data:base64}}
           ]}],
-          generationConfig:{maxOutputTokens:250,temperature:0.4,thinkingConfig:{thinkingLevel:"MINIMAL"}}
+          generationConfig:{maxOutputTokens:250,temperature:0.4}
         })
       }
     );
@@ -1469,7 +1469,7 @@ async function detectChannels() {
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${liveKey}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:'audio/webm',data:base64}}]}],
-          generationConfig:{maxOutputTokens:100,temperature:0.2,thinkingConfig:{thinkingLevel:"MINIMAL"}}})
+          generationConfig:{maxOutputTokens:100,temperature:0.2}}))
       }
     );
     const data = await res.json();
