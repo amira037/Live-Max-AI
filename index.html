@@ -536,6 +536,18 @@ input[type=range] {
 .memo-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:calc(var(--r)*0.8);padding:clamp(9px,1.6vw,13px) clamp(12px,2vw,16px);color:var(--text);font-family:var(--font-body);font-size:var(--sm);outline:none;resize:none;min-height:clamp(60px,12vw,80px);transition:border-color 0.2s}
 .memo-input:focus{border-color:var(--blue)}
 .memo-input::placeholder{color:var(--muted)}
+.situation-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.sit-chip{padding:5px 13px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted2);font-size:var(--xs);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:5px;font-family:var(--font-body)}
+.sit-chip:hover{border-color:var(--accent);color:var(--accent)}
+.sit-chip.active{border-color:var(--accent);background:rgba(0,255,136,0.1);color:var(--accent)}
+.sit-chip .sit-del{opacity:0.5;font-size:10px;line-height:1}
+.sit-chip .sit-del:hover{opacity:1;color:var(--danger)}
+.situation-input-row{display:flex;gap:6px}
+.situation-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:calc(var(--r)*0.8);padding:clamp(8px,1.4vw,11px) clamp(10px,1.8vw,14px);color:var(--text);font-family:var(--font-body);font-size:var(--sm);outline:none}
+.situation-input:focus{border-color:var(--blue)}
+.situation-input::placeholder{color:var(--muted)}
+.btn-add-sit{background:none;border:1px solid rgba(0,255,136,0.3);border-radius:calc(var(--r)*0.8);color:var(--accent);font-size:var(--sm);padding:0 14px;cursor:pointer;white-space:nowrap;transition:all 0.2s}
+.btn-add-sit:hover{background:rgba(0,255,136,0.08)}
 
 /* detect result */
 .detect-result{display:none;flex-direction:column;gap:clamp(6px,1vw,10px)}
@@ -647,7 +659,7 @@ input[type=range] {
       <div class="cards-scroll" id="cards-scroll">
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">🎚️</span>
-          <span class="empty-text">MaxAI 버튼을 눌러<br>7초 믹스를 분석해보세요</span>
+          <span class="empty-text">MAX AI 버튼을 눌러<br>실시간 믹스 분석을 시작해보세요</span>
         </div>
         <div id="analysis-list"></div>
       </div>
@@ -717,6 +729,7 @@ input[type=range] {
           <div class="btn-row" style="margin-top:clamp(6px,1vw,10px)">
             <button class="btn btn-secondary" onclick="startEditChannels()">수정</button>
             <button class="btn btn-detect" id="detect-btn" onclick="detectChannels()">🎙 자동 감지</button>
+            <button class="btn btn-secondary" onclick="resetChannels()" style="color:var(--danger);border-color:rgba(255,68,68,0.3)">초기화</button>
           </div>
         </div>
         <div id="channel-edit-wrap" style="display:none">
@@ -751,6 +764,16 @@ input[type=range] {
         <textarea class="memo-input" id="memo-input" placeholder="오늘 공연 특이사항, 주의 채널 등..."></textarea>
       </div>
 
+      <!-- Situation -->
+      <div class="setting-section">
+        <div class="setting-section-title">현재 상황</div>
+        <div class="situation-chips" id="situation-chips"></div>
+        <div class="situation-input-row">
+          <input class="situation-input" id="situation-input" placeholder="직접 입력 후 추가..." maxlength="60">
+          <button class="btn-add-sit" onclick="addSituationPreset()">추가</button>
+        </div>
+      </div>
+
       <button class="btn btn-primary" onclick="saveSettings()">저장</button>
 
     </div>
@@ -779,6 +802,8 @@ const state = {
   presets: [],
   activePreset: null,
   memo: '',
+  situation: '',
+  situationPresets: [],
   micStream: null,
   audioCtx: null,
   analyser: null,
@@ -813,6 +838,8 @@ function loadSettings() {
     if (s.presets)   state.presets   = s.presets;
     if (s.source)    state.source    = s.source;
     if (s.memo)      state.memo      = s.memo;
+    if (s.situation) state.situation = s.situation;
+    if (s.situationPresets) state.situationPresets = s.situationPresets;
     if (s.realtimeOn !== undefined) state.realtimeOn = s.realtimeOn;
     if (s.deviceId)  state.deviceId  = s.deviceId;
   } catch(e) {}
@@ -820,7 +847,8 @@ function loadSettings() {
 function saveToStorage() {
   localStorage.setItem('livemaxai', JSON.stringify({
     apiKey: state.apiKey, channels: state.channels, presets: state.presets,
-    source: state.source, memo: state.memo, realtimeOn: state.realtimeOn, deviceId: state.deviceId,
+    source: state.source, memo: state.memo, situation: state.situation,
+    situationPresets: state.situationPresets, realtimeOn: state.realtimeOn, deviceId: state.deviceId,
   }));
 }
 
@@ -848,7 +876,7 @@ async function initAudio(deviceId) {
     if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
     if (state.audioCtx)  { await state.audioCtx.close(); state.audioCtx = null; state.analyser = null; state.compressor = null; }
 
-    const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true, video: false };
+    const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId }, channelCount: AUDIO_CHANNELS } : { channelCount: AUDIO_CHANNELS }, video: false };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     state.micStream = stream;
     state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
@@ -1193,177 +1221,177 @@ function checkBalance(bandVals) {
   if (el) el.textContent = msg;
 }
 
-// ── MIC ──
+// ── LIVE API ──
+let socket = null;
+let liveAudioCtx = null;
+let liveProcessor = null;
+let liveNum = 0;
+let liveTurnText = '';
+let livePendingGroup = null;
+
 async function handleMic() {
-  if (state.isAnalyzing || state.isRecording) return;
+  if (state.isRecording) { stopLiveStreaming(); return; }
   if (!state.audioCtx || !state.micStream) {
     const ok = await initAudio(state.deviceId);
     if (!ok) return;
   }
   const liveKey = (document.getElementById('api-key-input')?.value||'').trim() || state.apiKey;
   if (!liveKey) { alert('⚙ 설정에서 Gemini API Key를 먼저 입력해주세요.'); toggleSettings(); return; }
-  startRecording();
+  startLiveSession(liveKey);
 }
 
-function startRecording() {
+function startLiveSession(liveKey) {
   state.isRecording = true;
-  state.audioChunks = [];
-  state.analysisCount++;
-  const num = state.analysisCount;
-
-  const btn = document.getElementById('mic-btn');
-  btn.classList.add('recording');
-  setLamp('rec', '녹음중');
   hideEmptyState();
+  document.getElementById('mic-btn').classList.add('recording');
+  setLamp('rec', '스트리밍중');
+  updateMicLabel('■ STOP');
+  liveNum++;
+  liveTurnText = '';
+  livePendingGroup = null;
 
+  const channelInfo = state.channels.length ? '채널 구성: '+state.channels.map((c,i)=>`ch${i+1}=${c}`).join(', ') : '채널 구성 정보 없음';
+  const sourceInfo  = state.source==='phone' ? '입력: 핸드폰 마이크' : '입력: 오디오 인터페이스';
+  const memo        = state.memo ? '공연 메모: '+state.memo : '';
+  const situation   = state.situation ? '현재 상황: '+state.situation : '';
+
+  const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${liveKey}`;
+  socket = new WebSocket(url);
+
+  socket.onopen = () => {
+    socket.send(JSON.stringify({
+      setup: {
+        model: "models/gemini-3.1-flash-live-preview",
+        generation_config: { response_modalities: ["TEXT"] },
+        system_instruction: { parts: [{ text:
+          `당신은 라이브 공연 믹스 엔지니어 어시스턴트 MaxAI입니다.\n${channelInfo}\n${sourceInfo}\n${situation}\n${memo}\n\n실시간으로 오디오를 분석하고 믹스 엔지니어에게 조언해주세요.\n\n규칙:\n- 조용하거나 음악이 없으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"\n- 음악이 있으면 아래 우선순위로 가장 중요한 문제 1가지만 골라 조언:\n  1. 채널 간 밸런스  2. 채널 EQ/컴프  3. 채널 리버브/이펙트  4. 하울링  5. 전체 밸런스\n- 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")\n- 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")\n- 전체 3~4줄 이내, 간결하게\n- 문제 없으면: "지금 믹스 완벽해요 🎚️" 한 줄만`
+        }] }
+      }
+    }));
+    startAudioStreaming();
+  };
+
+  socket.onmessage = async (event) => {
+    let raw = event.data;
+    if (raw instanceof Blob) raw = await raw.text();
+    let response;
+    try { response = JSON.parse(raw); } catch(e) { return; }
+    if (response.serverContent?.modelTurn?.parts) {
+      const text = response.serverContent.modelTurn.parts.map(p => p.text || '').join('');
+      if (text) { liveTurnText += text; updateLiveCard(liveTurnText); }
+    }
+    if (response.serverContent?.turnComplete && liveTurnText.trim()) {
+      finalizeLiveCard(liveTurnText);
+      liveTurnText = '';
+      livePendingGroup = null;
+    }
+  };
+
+  socket.onerror = (err) => { console.error('[LiveAPI] WebSocket error:', err); showLiveError('연결 오류가 발생했어요'); stopLiveStreaming(); };
+  socket.onclose = (e) => { console.warn('[LiveAPI] closed — code:', e.code, 'reason:', e.reason); if (state.isRecording) stopLiveStreaming(); };
+}
+
+async function startAudioStreaming() {
+  try {
+    liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+
+    const workletCode = `
+      class PCMProcessor extends AudioWorkletProcessor {
+        process(inputs) {
+          const ch = inputs[0]?.[0];
+          if (ch) this.port.postMessage(ch);
+          return true;
+        }
+      }
+      registerProcessor('pcm-processor', PCMProcessor);
+    `;
+    const blobUrl = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+    await liveAudioCtx.audioWorklet.addModule(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+
+    const src = liveAudioCtx.createMediaStreamSource(state.micStream);
+    liveProcessor = new AudioWorkletNode(liveAudioCtx, 'pcm-processor');
+
+    liveProcessor.port.onmessage = (e) => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      const input = e.data;
+      const pcm = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++) pcm[i] = Math.max(-1, Math.min(1, input[i])) * 0x7FFF;
+      const bytes = new Uint8Array(pcm.buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      socket.send(JSON.stringify({
+        realtime_input: { media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: btoa(binary) }] }
+      }));
+    };
+
+    src.connect(liveProcessor);
+    liveProcessor.connect(liveAudioCtx.destination);
+  } catch(e) {
+    showLiveError('오디오 스트리밍 오류: ' + e.message);
+    stopLiveStreaming();
+  }
+}
+
+function stopLiveStreaming() {
+  if (liveProcessor) { try { liveProcessor.disconnect(); } catch(e) {} liveProcessor = null; }
+  if (liveAudioCtx)  { liveAudioCtx.close(); liveAudioCtx = null; }
+  if (socket)        { try { socket.close(); } catch(e) {} socket = null; }
+  state.isRecording = false;
+  document.getElementById('mic-btn').classList.remove('recording');
+  setLamp('active', '청음중');
+  updateMicLabel('MAX AI');
+}
+
+function updateMicLabel(text) {
+  const el = document.getElementById('mic-label');
+  if (el) el.textContent = text;
+}
+
+function updateLiveCard(text) {
+  if (!livePendingGroup) {
+    const listEl = document.getElementById('analysis-list');
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+    const g = document.createElement('div');
+    g.className = 'card-group card-anim';
+    g.innerHTML = `<div class="card-meta"><span class="card-badge badge-rt">LIVE</span><span>${timeStr}</span></div><div class="card-problem" id="live-card-text-${liveNum}"></div>`;
+    listEl.insertBefore(g, listEl.firstChild);
+    livePendingGroup = g;
+    document.getElementById('cards-scroll').scrollTop = 0;
+  }
+  const el = document.getElementById('live-card-text-'+liveNum);
+  if (el) el.textContent = text;
+}
+
+function finalizeLiveCard(text) {
+  if (!livePendingGroup) return;
+  const textEl = document.getElementById('live-card-text-'+liveNum);
+  if (textEl) textEl.remove();
+  const lines = text.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
+  const result = { problem: lines[0]||'분석 완료', solutions: lines.slice(1) };
+  renderAnalysisCard(livePendingGroup, result);
+  livePendingGroup = null;
+}
+
+function showLiveError(msg) {
+  hideEmptyState();
   const listEl = document.getElementById('analysis-list');
   const now = new Date();
   const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   const g = document.createElement('div');
   g.className = 'card-group card-anim';
-  g.id = 'group-'+num;
-  g.innerHTML = `
-    <div class="card-meta">
-      <span class="card-badge badge-maxai">MAX AI</span>
-      <span>${timeStr}</span>
-    </div>
-    <div class="thinking-card" id="status-${num}">
-      <span id="status-icon-${num}" style="font-size:var(--md)">🔴</span>
-      <span id="status-text-${num}">5초간 녹음 중...</span>
-      <div class="thinking-dots" id="status-dots-${num}" style="display:none"><span></span><span></span><span></span></div>
-    </div>`;
+  g.innerHTML = `<div class="card-meta"><span class="card-badge badge-maxai">MAX AI</span><span>${timeStr}</span></div><div class="thinking-card"><span style="font-size:var(--md)">⚠️</span><span style="color:var(--danger);font-size:var(--sm);margin-left:8px">${msg}</span></div>`;
   listEl.insertBefore(g, listEl.firstChild);
-
-  const recorder = new MediaRecorder(state.micStream);
-  state.mediaRecorder = recorder;
-  recorder.ondataavailable = e => { if(e.data.size>0) state.audioChunks.push(e.data); };
-  recorder.onstop = () => onRecordingStop(num);
-  recorder.start();
-
-  let sec = 7;
-  document.getElementById('countdown').textContent = sec;
-  state.countdownTimer = setInterval(() => {
-    sec--;
-    if (sec <= 0) {
-      clearInterval(state.countdownTimer);
-      document.getElementById('countdown').textContent = '';
-      const icon = document.getElementById('status-icon-'+num);
-      const txt  = document.getElementById('status-text-'+num);
-      if (icon) icon.textContent = '📡';
-      if (txt)  txt.textContent  = 'AI에 전송 중...';
-      recorder.stop();
-    } else {
-      document.getElementById('countdown').textContent = sec;
-      const txt = document.getElementById('status-text-'+num);
-      if (txt) txt.textContent = sec+'초간 녹음 중...';
-    }
-  }, 1000);
 }
 
-async function onRecordingStop(num) {
-  state.isRecording = false;
-  document.getElementById('mic-btn').classList.remove('recording');
-  document.getElementById('mic-btn').classList.add('analyzing');
-  setLamp('analyze', '분석중');
-  state.isAnalyzing = true;
-
-  const icon = document.getElementById('status-icon-'+num);
-  const txt  = document.getElementById('status-text-'+num);
-  const dots = document.getElementById('status-dots-'+num);
-  if (icon) icon.textContent = '🔍';
-  if (txt)  txt.textContent  = '분석 중입니다...';
-  if (dots) dots.style.display = 'flex';
-
-  const blob = new Blob(state.audioChunks, { type:'audio/webm' });
-  await analyzeWithGemini(blob, num);
-
-  state.isAnalyzing = false;
-  document.getElementById('mic-btn').classList.remove('analyzing');
-  setLamp('active', '청음중');
-  startGeminiCooldown(25);
-}
-
-function startGeminiCooldown(sec) {
-  const btn = document.getElementById('mic-btn');
-  const label = document.getElementById('mic-label');
-  btn.style.opacity = '0.5';
-  btn.style.pointerEvents = 'none';
-  let remaining = sec;
-  label.textContent = 'MAX AI (' + remaining + '초)';
-  const timer = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(timer);
-      btn.style.opacity = '';
-      btn.style.pointerEvents = '';
-      label.textContent = 'MAX AI';
-    } else {
-      label.textContent = 'MAX AI (' + remaining + '초)';
-    }
-  }, 1000);
-}
-
-// ── GEMINI ──
-async function analyzeWithGemini(audioBlob, num) {
-  const groupEl  = document.getElementById('group-'+num);
-  const statusEl = document.getElementById('status-'+num);
-  try {
-    const base64 = await blobToBase64(audioBlob);
-    const channelInfo = state.channels.length ? '채널 구성: '+state.channels.map((c,i)=>`ch${i+1}=${c}`).join(', ') : '채널 구성 정보 없음';
-    const sourceInfo  = state.source==='phone' ? '입력: 핸드폰 마이크' : '입력: 오디오 인터페이스';
-    const memo        = state.memo ? '공연 메모: '+state.memo : '';
-
-    const prompt = `당신은 라이브 공연 믹스 엔지니어 어시스턴트 MaxAI입니다.
-${channelInfo}
-${sourceInfo}
-${memo}
-
-첨부된 5초 오디오를 듣고 믹스 엔지니어에게 조언해주세요.
-
-규칙:
-- 조용하거나 음악이 없으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
-- 음악이 있으면 아래 우선순위로 가장 중요한 문제 1가지만 골라 조언:
-  1. 채널 간 밸런스  2. 채널 EQ/컴프  3. 채널 리버브/이펙트  4. 하울링  5. 전체 밸런스
-- 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")
-- 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")
-- 전체 3~4줄 이내, 간결하게
-- 문제 없으면: "지금 믹스 완벽해요 🎚️" 한 줄만`;
-
-    const liveKey = (document.getElementById('api-key-input')?.value||'').trim() || state.apiKey;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${liveKey}`,
-      {
-        method:'POST', signal:controller.signal,
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          contents:[{parts:[
-            {text:prompt},
-            {inline_data:{mime_type:'audio/webm',data:base64}}
-          ]}],
-          generationConfig:{maxOutputTokens:250,temperature:0.4}
-        })
-      }
-    );
-    clearTimeout(timeout);
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-    const parts = data.candidates?.[0]?.content?.parts||[];
-    const text = parts.filter(p=>p.text).map(p=>p.text).join('').trim();
-    if (!text) throw new Error('응답이 비어있어요');
-    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
-    const result = { problem: lines[0]||'분석 완료', solutions: lines.slice(1) };
-    if (statusEl) statusEl.remove();
-    renderAnalysisCard(groupEl, result);
-  } catch(err) {
-    if (statusEl) {
-      statusEl.innerHTML = `<span style="font-size:var(--md)">⚠️</span><span style="color:var(--danger);font-size:var(--sm);margin-left:8px">${err.message||'오류가 발생했어요'}</span>`;
-      const dots = statusEl.querySelector('.thinking-dots');
-      if (dots) dots.remove();
-    }
-  }
-}
+// ── AUDIO FORMAT ──
+const AUDIO_MIME        = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+  ? 'audio/webm;codecs=opus'
+  : 'audio/mp4';
+const AUDIO_SAMPLE_RATE = 24000;   // 녹음 샘플레이트 (Hz)
+const AUDIO_CHANNELS    = 1;       // 1 = Mono, 2 = Stereo
+const AUDIO_BITRATE     = 48000;   // 비트레이트 (bps)
 
 function renderAnalysisCard(groupEl, result) {
   if (!groupEl||!result) return;
@@ -1404,6 +1432,7 @@ function renderSettings() {
   document.getElementById('rt-toggle').checked = state.realtimeOn;
   renderChannelView();
   renderPresets();
+  renderSituationChips();
   renderDeviceSelect();
 }
 function selectSource(src) { state.source=src; renderSettings(); }
@@ -1447,16 +1476,20 @@ async function detectChannels() {
   const timer = setInterval(() => { sec--; if(btn) btn.textContent = sec>0?`🔴 ${sec}초...`:'📡 분석 중...'; if(sec<=0) clearInterval(timer); },1000);
 
   const chunks = [];
-  const recorder = new MediaRecorder(state.micStream);
+  const recCtx = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
+  const recSrc = recCtx.createMediaStreamSource(state.micStream);
+  const recDst = recCtx.createMediaStreamDestination();
+  recSrc.connect(recDst);
+  const recorder = new MediaRecorder(recDst.stream, { mimeType: AUDIO_MIME, audioBitsPerSecond: AUDIO_BITRATE });
   recorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
   recorder.start();
   await new Promise(r => setTimeout(r, 7000));
   recorder.stop();
   clearInterval(timer);
-  await new Promise(r => { recorder.onstop = r; });
+  await new Promise(r => { recorder.onstop = () => { recCtx.close(); r(); }; });
 
   try {
-    const base64 = await blobToBase64(new Blob(chunks,{type:'audio/webm'}));
+    const base64 = await blobToBase64(new Blob(chunks,{type: AUDIO_MIME}));
     const prompt = `이 오디오를 듣고 들리는 악기와 보컬을 채널 목록으로 만들어주세요.
 규칙:
 - 실제로 들리는 것만 포함
@@ -1466,10 +1499,10 @@ async function detectChannels() {
 - 아무 소리도 없으면 "소리 없음" 한 줄만`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${liveKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${liveKey}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:'audio/webm',data:base64}}]}],
-          generationConfig:{maxOutputTokens:100,temperature:0.2}}))
+        body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:AUDIO_MIME,data:base64}}]}],
+          generationConfig:{maxOutputTokens:100,temperature:0.2,thinkingConfig:{thinkingLevel:"MINIMAL"}}})
       }
     );
     const data = await res.json();
@@ -1540,6 +1573,7 @@ function confirmPreset() {
   closeModal(); renderPresets();
 }
 function loadPreset(i) { state.channels=[...state.presets[i].channels]; state.activePreset=i; renderChannelView(); renderPresets(); }
+function resetChannels() { if(!confirm('채널 구성을 초기화할까요?')) return; state.channels=[]; state.activePreset=null; renderChannelView(); renderPresets(); saveToStorage(); }
 function deletePreset(i) {
   if(!confirm(`"${state.presets[i].name}" 프리셋을 삭제할까요?`)) return;
   state.presets.splice(i,1); if(state.activePreset===i) state.activePreset=null; renderPresets();
@@ -1553,6 +1587,63 @@ function saveSettings() {
 document.getElementById('modal-input').addEventListener('keydown', e=>{
   if(e.key==='Enter') confirmPreset();
   if(e.key==='Escape') closeModal();
+});
+
+// ── SITUATION PRESETS ──
+const DEFAULT_SITUATIONS = [
+  { label:'예배 인도', text:'예배 인도자(보컬)가 항상 가장 선명하게 들려야 함. 다른 악기나 음악 볼륨을 올리는 조언은 하지 말 것. 인도자 볼륨 확보를 최우선으로.' },
+  { label:'찬양 집회', text:'전체 에너지와 밴드 밸런스 우선. 드럼과 베이스 펀치감을 살릴 것.' },
+  { label:'소편성', text:'악기 수가 적음. 공간감과 리버브 균형 중심으로 조언.' },
+  { label:'방송/녹음', text:'청중보다 방송·녹음 음질 우선. 클리핑에 주의할 것.' },
+];
+
+function renderSituationChips() {
+  const el = document.getElementById('situation-chips');
+  if (!el) return;
+  const all = [
+    ...DEFAULT_SITUATIONS,
+    ...state.situationPresets.map((t,i) => ({ label: t, text: t, custom: true, idx: i }))
+  ];
+  el.innerHTML = all.map((s,i) => {
+    const active = state.situation === s.text ? ' active' : '';
+    const del = s.custom ? `<span class="sit-del" onclick="event.stopPropagation();deleteSituation(${s.idx})">✕</span>` : '';
+    return `<div class="sit-chip${active}" onclick="selectSituation('${s.text.replace(/'/g,"\\'")}', this)">${s.label}${del}</div>`;
+  }).join('');
+}
+
+function selectSituation(text, el) {
+  if (state.situation === text) {
+    state.situation = '';
+  } else {
+    state.situation = text;
+  }
+  saveToStorage();
+  renderSituationChips();
+}
+
+function addSituationPreset() {
+  const input = document.getElementById('situation-input');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!state.situationPresets.includes(val)) {
+    state.situationPresets.push(val);
+  }
+  state.situation = val;
+  saveToStorage();
+  input.value = '';
+  renderSituationChips();
+}
+
+function deleteSituation(idx) {
+  const text = state.situationPresets[idx];
+  if (state.situation === text) state.situation = '';
+  state.situationPresets.splice(idx, 1);
+  saveToStorage();
+  renderSituationChips();
+}
+
+document.getElementById('situation-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addSituationPreset();
 });
 
 // ── INIT ──
