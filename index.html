@@ -721,6 +721,25 @@ input[type=range] {
         <input class="api-input" type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
       </div>
 
+      <!-- Model -->
+      <div class="setting-section">
+        <div class="setting-section-title">AI 모델</div>
+        <div class="radio-group">
+          <div class="radio-option" id="model-2.5-flash" onclick="selectModel('gemini-2.5-flash')">
+            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+            <div><div class="radio-text">2.5 Flash</div></div>
+          </div>
+          <div class="radio-option" id="model-3-flash" onclick="selectModel('gemini-3-flash-preview')">
+            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+            <div><div class="radio-text">3.0 Flash</div></div>
+          </div>
+          <div class="radio-option" id="model-3.1-flash-lite" onclick="selectModel('gemini-3.1-flash-lite-preview')">
+            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+            <div><div class="radio-text">3.1 Flash Lite</div></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Channel config -->
       <div class="setting-section">
         <div class="setting-section-title">채널 구성</div>
@@ -823,6 +842,7 @@ const state = {
   manualGain: 1.0,
   deviceId: 'default',
   devices: [],
+  model: 'gemini-3.1-flash-lite-preview',
 };
 
 const PHONE_CORRECTION = [8,8,7,6,5,4,3,2,1,0,0,-1,-1,-1,-2,-2,-2,-2,-3,-3,-3,-3,-4,-4,-4,-4,-4,-5,-5,-5,-5,-5];
@@ -842,6 +862,7 @@ function loadSettings() {
     if (s.situationPresets) state.situationPresets = s.situationPresets;
     if (s.realtimeOn !== undefined) state.realtimeOn = s.realtimeOn;
     if (s.deviceId)  state.deviceId  = s.deviceId;
+    if (s.model)     state.model     = s.model;
   } catch(e) {}
 }
 function saveToStorage() {
@@ -849,6 +870,7 @@ function saveToStorage() {
     apiKey: state.apiKey, channels: state.channels, presets: state.presets,
     source: state.source, memo: state.memo, situation: state.situation,
     situationPresets: state.situationPresets, realtimeOn: state.realtimeOn, deviceId: state.deviceId,
+    model: state.model,
   }));
 }
 
@@ -876,7 +898,7 @@ async function initAudio(deviceId) {
     if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
     if (state.audioCtx)  { await state.audioCtx.close(); state.audioCtx = null; state.analyser = null; state.compressor = null; }
 
-    const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId }, channelCount: AUDIO_CHANNELS } : { channelCount: AUDIO_CHANNELS }, video: false };
+    const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true, video: false };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     state.micStream = stream;
     state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
@@ -1262,11 +1284,11 @@ function startRecording() {
     </div>`;
   listEl.insertBefore(g, listEl.firstChild);
 
-  const recCtx = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
+  const recCtx = new AudioContext();
   const recSrc = recCtx.createMediaStreamSource(state.micStream);
   const recDst = recCtx.createMediaStreamDestination();
   recSrc.connect(recDst);
-  const recorder = new MediaRecorder(recDst.stream, { mimeType: AUDIO_MIME, audioBitsPerSecond: AUDIO_BITRATE });
+  const recorder = new MediaRecorder(recDst.stream, { mimeType: AUDIO_MIME });
   state.mediaRecorder = recorder;
   recorder.ondataavailable = e => { if(e.data.size>0) state.audioChunks.push(e.data); };
   recorder.onstop = () => { recCtx.close(); onRecordingStop(num); };
@@ -1340,9 +1362,6 @@ const AUDIO_MIME        = MediaRecorder.isTypeSupported('audio/webm;codecs=opus'
   ? 'audio/webm;codecs=opus'
   : 'audio/mp4';
 const AUDIO_GEMINI_MIME = AUDIO_MIME.split(';')[0]; // Gemini API용 정규화 (codecs 파라미터 제거)
-const AUDIO_SAMPLE_RATE = 24000;   // 녹음 샘플레이트 (Hz)
-const AUDIO_CHANNELS    = 1;       // 1 = Mono, 2 = Stereo
-const AUDIO_BITRATE     = 48000;   // 비트레이트 (bps)
 
 // ── GEMINI ──
 async function analyzeWithGemini(audioBlob, num) {
@@ -1376,7 +1395,7 @@ ${memo}
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${liveKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:generateContent?key=${liveKey}`,
       {
         method:'POST', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
@@ -1385,7 +1404,7 @@ ${memo}
             {text:prompt},
             {inline_data:{mime_type:AUDIO_GEMINI_MIME,data:base64}}
           ]}],
-          generationConfig:{maxOutputTokens:250,temperature:0.4,thinkingConfig:{thinkingLevel:"MINIMAL"}}
+          generationConfig:{maxOutputTokens:250,temperature:0.4,...(state.model!=='gemini-2.5-flash'&&{thinkingConfig:{thinkingLevel:"MINIMAL"}})}
         })
       }
     );
@@ -1445,12 +1464,25 @@ function renderSettings() {
   document.getElementById('api-key-input').value = state.apiKey;
   document.getElementById('memo-input').value = state.memo;
   document.getElementById('rt-toggle').checked = state.realtimeOn;
+  const modelMap = {
+    'gemini-2.5-flash': 'model-2.5-flash',
+    'gemini-3-flash-preview': 'model-3-flash',
+    'gemini-3.1-flash-lite-preview': 'model-3.1-flash-lite',
+  };
+  Object.entries(modelMap).forEach(([val, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const active = state.model === val;
+    el.classList.toggle('selected', active);
+    el.querySelector('.radio-dot-inner').style.display = active ? 'block' : 'none';
+  });
   renderChannelView();
   renderPresets();
   renderSituationChips();
   renderDeviceSelect();
 }
 function selectSource(src) { state.source=src; renderSettings(); }
+function selectModel(val) { state.model=val; saveToStorage(); renderSettings(); }
 function renderChannelView() {
   const wrap = document.getElementById('channel-view');
   wrap.innerHTML = state.channels.length
@@ -1491,11 +1523,11 @@ async function detectChannels() {
   const timer = setInterval(() => { sec--; if(btn) btn.textContent = sec>0?`🔴 ${sec}초...`:'📡 분석 중...'; if(sec<=0) clearInterval(timer); },1000);
 
   const chunks = [];
-  const recCtx = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
+  const recCtx = new AudioContext();
   const recSrc = recCtx.createMediaStreamSource(state.micStream);
   const recDst = recCtx.createMediaStreamDestination();
   recSrc.connect(recDst);
-  const recorder = new MediaRecorder(recDst.stream, { mimeType: AUDIO_MIME, audioBitsPerSecond: AUDIO_BITRATE });
+  const recorder = new MediaRecorder(recDst.stream, { mimeType: AUDIO_MIME });
   recorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
   recorder.start();
   await new Promise(r => setTimeout(r, 5000));
@@ -1514,10 +1546,10 @@ async function detectChannels() {
 - 아무 소리도 없으면 "소리 없음" 한 줄만`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${liveKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:generateContent?key=${liveKey}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:AUDIO_GEMINI_MIME,data:base64}}]}],
-          generationConfig:{maxOutputTokens:100,temperature:0.2,thinkingConfig:{thinkingLevel:"MINIMAL"}}})
+          generationConfig:{maxOutputTokens:100,temperature:0.2,...(state.model!=='gemini-2.5-flash'&&{thinkingConfig:{thinkingLevel:"MINIMAL"}})}})
       }
     );
     const data = await res.json();
