@@ -168,10 +168,17 @@ canvas#meter {
 .controls-row {
   display: flex;
   flex-direction: column;
-  gap: clamp(4px,0.8vw,8px);
-  padding: clamp(6px,1vw,10px) 2px;
+  gap: 0;
   background: var(--surface);
   border-radius: var(--r);
+}
+.controls-toggle-header {
+  display: none;
+}
+.controls-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px,0.8vw,8px);
   padding: clamp(8px,1.5vw,14px);
 }
 
@@ -576,7 +583,30 @@ input[type=range] {
   .lamp-label { font-size: 13px !important; }
 
   /* 컨트롤 영역 */
-  .controls-row {
+  .controls-toggle-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted2);
+    user-select: none;
+    border-radius: var(--r);
+    letter-spacing: 0.05em;
+  }
+  .controls-toggle-header:active { opacity: 0.7; }
+  .controls-collapsible {
+    overflow: hidden;
+    transition: height 0.3s ease;
+  }
+  .controls-collapsible.is-collapsed {
+    height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .controls-collapsible {
     gap: 10px !important;
     padding: 14px !important;
   }
@@ -678,6 +708,10 @@ input[type=range] {
 
       <!-- Controls -->
       <div class="controls-row">
+        <div class="controls-toggle-header" id="controls-toggle-header" onclick="toggleControlsPanel()">
+          <span id="controls-toggle-label">CONTROLS ▼</span>
+        </div>
+        <div class="controls-collapsible" id="controls-collapsible">
         <!-- AGC + Source row -->
         <div class="ctrl-row">
           <span class="ctrl-label">AUTO</span>
@@ -723,6 +757,7 @@ input[type=range] {
             <div class="toggle-knob"></div>
           </label>
         </div>
+        </div><!-- /controls-collapsible -->
       </div>
 
       <!-- Mic button -->
@@ -1926,6 +1961,71 @@ document.addEventListener('touchstart', async () => {
     await state.audioCtx.resume();
   }
 }, { once: true });
+
+// Controls panel collapse (mobile portrait only)
+const _ctrlMQ = window.matchMedia('(max-width: 768px) and (orientation: portrait)');
+
+function _isControlsMobile() {
+  return _ctrlMQ.matches;
+}
+
+function toggleControlsPanel() {
+  const el = document.getElementById('controls-collapsible');
+  const label = document.getElementById('controls-toggle-label');
+  if (!el) return;
+
+  if (el.classList.contains('is-collapsed')) {
+    // Expand
+    el.style.height = el.scrollHeight + 'px';
+    el.classList.remove('is-collapsed');
+    label.textContent = 'CONTROLS ▲';
+    localStorage.setItem('controlsPanelOpen', '1');
+    el.addEventListener('transitionend', function onEnd() {
+      el.style.height = 'auto';
+      el.removeEventListener('transitionend', onEnd);
+    });
+  } else {
+    // Collapse: fix height first, then animate to 0
+    el.style.height = el.scrollHeight + 'px';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.height = '0px';
+        el.classList.add('is-collapsed');
+        label.textContent = 'CONTROLS ▼';
+        localStorage.setItem('controlsPanelOpen', '0');
+      });
+    });
+  }
+}
+
+function initControlsPanel() {
+  const el = document.getElementById('controls-collapsible');
+  const label = document.getElementById('controls-toggle-label');
+  if (!el || !label) return;
+
+  if (!_isControlsMobile()) {
+    // 데스크톱/가로: 항상 펼침, transition 제거
+    el.style.height = '';
+    el.style.transition = '';
+    el.classList.remove('is-collapsed');
+    return;
+  }
+
+  const saved = localStorage.getItem('controlsPanelOpen');
+  if (saved === '1') {
+    el.style.height = 'auto';
+    el.classList.remove('is-collapsed');
+    label.textContent = 'CONTROLS ▲';
+  } else {
+    // 기본: 접힌 상태
+    el.style.height = '0px';
+    el.classList.add('is-collapsed');
+    label.textContent = 'CONTROLS ▼';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initControlsPanel);
+_ctrlMQ.addEventListener('change', initControlsPanel);
 </script>
 
 <script>
