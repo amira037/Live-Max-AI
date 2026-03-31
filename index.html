@@ -216,6 +216,7 @@ input[type=range] {
 .toggle-switch input:checked ~ .toggle-knob { left:calc(clamp(36px,6vw,52px) - clamp(20px,3.2vw,28px) + 3px); background:#fff; }
 
 .ctrl-divider { height:1px; background:var(--border); margin:2px 0; }
+.ctrl-rt-label { flex:1; font-family:var(--font-mono); font-size:var(--xs); color:var(--muted); }
 
 /* ── MIC BUTTON ── */
 .mic-wrap {
@@ -540,8 +541,6 @@ input[type=range] {
 .sit-chip{padding:5px 13px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted2);font-size:var(--xs);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:5px;font-family:var(--font-body)}
 .sit-chip:hover{border-color:var(--accent);color:var(--accent)}
 .sit-chip.active{border-color:var(--accent);background:rgba(0,255,136,0.1);color:var(--accent)}
-.sit-chip .sit-del{opacity:0.5;font-size:10px;line-height:1}
-.sit-chip .sit-del:hover{opacity:1;color:var(--danger)}
 .situation-input-row{display:flex;gap:6px}
 .situation-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:calc(var(--r)*0.8);padding:clamp(8px,1.4vw,11px) clamp(10px,1.8vw,14px);color:var(--text);font-family:var(--font-body);font-size:var(--sm);outline:none}
 .situation-input:focus{border-color:var(--blue)}
@@ -563,6 +562,91 @@ input[type=range] {
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── 모바일 세로: 컨트롤·헤더 크게 ── */
+@media (max-width: 767px) and (orientation: portrait) {
+  /* 헤더 설정 버튼 */
+  .btn-settings {
+    font-size: 16px !important;
+    padding: 10px 18px !important;
+    border-radius: 8px !important;
+  }
+  /* 헤더 램프 + 라벨 */
+  .lamp { width: 12px !important; height: 12px !important; }
+  .lamp-label { font-size: 13px !important; }
+
+  /* 컨트롤 영역 */
+  .controls-row {
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+  .ctrl-row { gap: 12px !important; }
+  .ctrl-label { font-size: 14px !important; width: 3.8em !important; }
+  .ctrl-val   { font-size: 14px !important; min-width: 4.5em !important; }
+  .ctrl-rst   { font-size: 13px !important; padding: 6px 12px !important; border-radius: 6px !important; }
+  .ctrl-divider { margin: 4px 0 !important; }
+
+  /* 슬라이더 */
+  input[type=range] { height: 28px !important; }
+
+  /* AUTO 토글 스위치 */
+  .toggle-switch { width: 52px !important; height: 30px !important; }
+  .toggle-knob   { width: 22px !important; height: 22px !important; top: 4px !important; left: 4px !important; }
+  .toggle-switch input:checked ~ .toggle-knob { left: 26px !important; }
+
+  /* 저역보정/FLAT 소스 토글 */
+  #source-toggle { margin-left: 6px !important; }
+  #src-mobile-btn, #src-line-btn {
+    font-size: 13px !important;
+    padding: 6px 11px !important;
+  }
+
+  /* 실시간 라벨 */
+  .ctrl-rt-label { font-size: 13px !important; }
+}
+
+/* ── 모바일 설정 패널 폰트 크게 ── */
+@media (max-width: 767px) {
+  .settings-panel {
+    --xs: 13px;
+    --sm: 15px;
+    --md: 16px;
+  }
+  .setting-section-title { font-size: 13px !important; }
+  .radio-text { font-size: 16px !important; }
+  .radio-sub  { font-size: 13px !important; }
+  .preset-name { font-size: 15px !important; }
+  .preset-count { font-size: 13px !important; }
+  .preset-btn { font-size: 13px !important; padding: 5px 12px !important; }
+  .ch-name { font-size: 15px !important; }
+  .ch-num  { font-size: 13px !important; }
+  .ch-hint { font-size: 12px !important; }
+  .sit-chip { font-size: 14px !important; padding: 8px 16px !important; }
+  .api-input { font-size: 15px !important; }
+  .channel-textarea { font-size: 15px !important; }
+  .memo-input { font-size: 15px !important; }
+  .situation-input { font-size: 15px !important; }
+  .btn { font-size: 15px !important; padding: 12px !important; }
+  .btn-add-sit { font-size: 15px !important; padding: 0 18px !important; }
+  .settings-title { font-size: calc(var(--xl) * 1.15) !important; }
+  .modal-title { font-size: calc(var(--xl) * 1.1) !important; }
+  .modal-input { font-size: 16px !important; }
+}
+
+/* sit-del 터치 영역 개선 */
+.sit-chip .sit-del {
+  opacity: 0.6;
+  font-size: 12px;
+  padding: 2px 4px;
+  margin-left: 2px;
+  cursor: pointer;
+  min-width: 20px;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sit-chip .sit-del:hover { opacity: 1; color: var(--danger); }
 </style>
 </head>
 <body>
@@ -632,7 +716,7 @@ input[type=range] {
         <!-- Realtime toggle -->
         <div class="ctrl-row">
           <span class="ctrl-label" style="color:var(--muted2)">실시간</span>
-          <span style="flex:1;font-family:var(--font-mono);font-size:var(--xs);color:var(--muted)">JS 분석 조언</span>
+          <span class="ctrl-rt-label">JS 분석 조언</span>
           <label class="toggle-switch">
             <input type="checkbox" id="rt-toggle" onchange="toggleRealtime(this.checked)">
             <div class="toggle-track"></div>
@@ -780,7 +864,11 @@ input[type=range] {
       <!-- Memo -->
       <div class="setting-section">
         <div class="setting-section-title">공연 메모</div>
-        <textarea class="memo-input" id="memo-input" placeholder="오늘 공연 특이사항, 주의 채널 등..."></textarea>
+        <div class="situation-chips" id="memo-chips"></div>
+        <div style="display:flex;gap:6px;align-items:flex-start">
+          <textarea class="memo-input" id="memo-input" placeholder="오늘 공연 특이사항, 주의 채널 등..." style="flex:1"></textarea>
+          <button class="btn-add-sit" onclick="saveMemoPreset()" style="align-self:flex-end;padding:10px 14px;white-space:nowrap">저장</button>
+        </div>
       </div>
 
       <!-- Situation -->
@@ -791,6 +879,16 @@ input[type=range] {
           <input class="situation-input" id="situation-input" placeholder="직접 입력 후 추가..." maxlength="60">
           <button class="btn-add-sit" onclick="addSituationPreset()">추가</button>
         </div>
+      </div>
+
+      <!-- Export / Import -->
+      <div class="setting-section">
+        <div class="setting-section-title">설정 백업</div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="exportSettings()">📤 내보내기</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📥 불러오기</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSettings(event)">
       </div>
 
       <button class="btn btn-primary" onclick="saveSettings()">저장</button>
@@ -817,12 +915,14 @@ const state = {
   realtimeOn: false,
   source: 'phone',
   apiKey: '',
-  channels: ['킥 드럼','스네어','베이스','보컬 리더','보컬 여성'],
+  channels: [],
   presets: [],
   activePreset: null,
   memo: '',
+  memoPresets: [],
   situation: '',
   situationPresets: [],
+  deletedDefaultSituations: [],
   micStream: null,
   audioCtx: null,
   analyser: null,
@@ -858,8 +958,10 @@ function loadSettings() {
     if (s.presets)   state.presets   = s.presets;
     if (s.source)    state.source    = s.source;
     if (s.memo)      state.memo      = s.memo;
+    if (Array.isArray(s.memoPresets)) state.memoPresets = s.memoPresets;
     if (s.situation) state.situation = s.situation;
     if (s.situationPresets) state.situationPresets = s.situationPresets;
+    if (Array.isArray(s.deletedDefaultSituations)) state.deletedDefaultSituations = s.deletedDefaultSituations;
     if (s.realtimeOn !== undefined) state.realtimeOn = s.realtimeOn;
     if (s.deviceId)  state.deviceId  = s.deviceId;
     if (s.model)     state.model     = s.model;
@@ -868,8 +970,9 @@ function loadSettings() {
 function saveToStorage() {
   localStorage.setItem('livemaxai', JSON.stringify({
     apiKey: state.apiKey, channels: state.channels, presets: state.presets,
-    source: state.source, memo: state.memo, situation: state.situation,
-    situationPresets: state.situationPresets, realtimeOn: state.realtimeOn, deviceId: state.deviceId,
+    source: state.source, memo: state.memo, memoPresets: state.memoPresets, situation: state.situation,
+    situationPresets: state.situationPresets, deletedDefaultSituations: state.deletedDefaultSituations,
+    realtimeOn: state.realtimeOn, deviceId: state.deviceId,
     model: state.model,
   }));
 }
@@ -1478,6 +1581,7 @@ function renderSettings() {
   });
   renderChannelView();
   renderPresets();
+  renderMemoChips();
   renderSituationChips();
   renderDeviceSelect();
 }
@@ -1617,13 +1721,13 @@ function confirmPreset() {
   if(!name) return;
   if(window._presetEditIdx!==null) state.presets[window._presetEditIdx].name=name;
   else state.presets.push({name,channels:[...state.channels]});
-  closeModal(); renderPresets();
+  saveToStorage(); closeModal(); renderPresets();
 }
-function loadPreset(i) { state.channels=[...state.presets[i].channels]; state.activePreset=i; renderChannelView(); renderPresets(); }
+function loadPreset(i) { state.channels=[...state.presets[i].channels]; state.activePreset=i; renderChannelView(); renderPresets(); saveToStorage(); }
 function resetChannels() { if(!confirm('채널 구성을 초기화할까요?')) return; state.channels=[]; state.activePreset=null; renderChannelView(); renderPresets(); saveToStorage(); }
 function deletePreset(i) {
   if(!confirm(`"${state.presets[i].name}" 프리셋을 삭제할까요?`)) return;
-  state.presets.splice(i,1); if(state.activePreset===i) state.activePreset=null; renderPresets();
+  state.presets.splice(i,1); if(state.activePreset===i) state.activePreset=null; renderPresets(); saveToStorage();
 }
 function saveSettings() {
   state.apiKey=document.getElementById('api-key-input').value.trim();
@@ -1631,10 +1735,105 @@ function saveSettings() {
   saveToStorage(); alert('저장됐어요 ✓');
 }
 
+function exportSettings() {
+  const data = {
+    apiKey: state.apiKey,
+    channels: state.channels,
+    presets: state.presets,
+    source: state.source,
+    memo: state.memo,
+    memoPresets: state.memoPresets,
+    situation: state.situation,
+    situationPresets: state.situationPresets,
+    deletedDefaultSituations: state.deletedDefaultSituations,
+    model: state.model,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'livemaxai-settings.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importSettings(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.apiKey !== undefined) state.apiKey = data.apiKey;
+      if (Array.isArray(data.channels)) state.channels = data.channels;
+      if (Array.isArray(data.presets)) state.presets = data.presets;
+      if (data.source) state.source = data.source;
+      if (data.memo !== undefined) state.memo = data.memo;
+      if (Array.isArray(data.memoPresets)) state.memoPresets = data.memoPresets;
+      if (data.situation !== undefined) state.situation = data.situation;
+      if (Array.isArray(data.situationPresets)) state.situationPresets = data.situationPresets;
+      if (Array.isArray(data.deletedDefaultSituations)) state.deletedDefaultSituations = data.deletedDefaultSituations;
+      if (data.model) state.model = data.model;
+      saveToStorage();
+      renderSettings();
+      alert('설정을 불러왔어요 ✓');
+    } catch(err) {
+      alert('파일을 읽을 수 없어요. JSON 형식인지 확인해주세요.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
 document.getElementById('modal-input').addEventListener('keydown', e=>{
   if(e.key==='Enter') confirmPreset();
   if(e.key==='Escape') closeModal();
 });
+
+// ── MEMO PRESETS ──
+function renderMemoChips() {
+  const el = document.getElementById('memo-chips');
+  if (!el) return;
+  if (!state.memoPresets.length) { el.innerHTML = ''; return; }
+  el.innerHTML = state.memoPresets.map((t, i) => {
+    const active = state.memo === t ? ' active' : '';
+    return `<div class="sit-chip${active}" onclick="selectMemoPreset(${i})">${t.length > 20 ? t.slice(0,20)+'…' : t}<span class="sit-del" onclick="event.stopPropagation();deleteMemoPreset(${i})">✕</span></div>`;
+  }).join('');
+}
+
+function selectMemoPreset(idx) {
+  const t = state.memoPresets[idx];
+  if (state.memo === t) {
+    state.memo = '';
+  } else {
+    state.memo = t;
+  }
+  document.getElementById('memo-input').value = state.memo;
+  saveToStorage();
+  renderMemoChips();
+}
+
+function saveMemoPreset() {
+  const val = document.getElementById('memo-input').value.trim();
+  if (!val) return;
+  state.memo = val;
+  if (!state.memoPresets.includes(val)) {
+    state.memoPresets.push(val);
+  }
+  saveToStorage();
+  renderMemoChips();
+}
+
+function deleteMemoPreset(idx) {
+  const text = state.memoPresets[idx];
+  if (state.memo === text) state.memo = '';
+  state.memoPresets.splice(idx, 1);
+  saveToStorage();
+  renderMemoChips();
+  document.getElementById('memo-input').value = state.memo;
+}
 
 // ── SITUATION PRESETS ──
 const DEFAULT_SITUATIONS = [
@@ -1647,13 +1846,16 @@ const DEFAULT_SITUATIONS = [
 function renderSituationChips() {
   const el = document.getElementById('situation-chips');
   if (!el) return;
+  const defaults = DEFAULT_SITUATIONS.filter(s => !state.deletedDefaultSituations.includes(s.label));
   const all = [
-    ...DEFAULT_SITUATIONS,
+    ...defaults.map(s => ({ ...s, isDefault: true })),
     ...state.situationPresets.map((t,i) => ({ label: t, text: t, custom: true, idx: i }))
   ];
-  el.innerHTML = all.map((s,i) => {
+  el.innerHTML = all.map((s) => {
     const active = state.situation === s.text ? ' active' : '';
-    const del = s.custom ? `<span class="sit-del" onclick="event.stopPropagation();deleteSituation(${s.idx})">✕</span>` : '';
+    let del = '';
+    if (s.custom) del = `<span class="sit-del" onclick="event.stopPropagation();deleteSituation(${s.idx})">✕</span>`;
+    else if (s.isDefault) del = `<span class="sit-del" onclick="event.stopPropagation();deleteDefaultSituation('${s.label}')">✕</span>`;
     return `<div class="sit-chip${active}" onclick="selectSituation('${s.text.replace(/'/g,"\\'")}', this)">${s.label}${del}</div>`;
   }).join('');
 }
@@ -1685,6 +1887,16 @@ function deleteSituation(idx) {
   const text = state.situationPresets[idx];
   if (state.situation === text) state.situation = '';
   state.situationPresets.splice(idx, 1);
+  saveToStorage();
+  renderSituationChips();
+}
+
+function deleteDefaultSituation(label) {
+  const def = DEFAULT_SITUATIONS.find(s => s.label === label);
+  if (def && state.situation === def.text) state.situation = '';
+  if (!state.deletedDefaultSituations.includes(label)) {
+    state.deletedDefaultSituations.push(label);
+  }
   saveToStorage();
   renderSituationChips();
 }
