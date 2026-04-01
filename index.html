@@ -22,6 +22,110 @@
 <!-- 데스크톱 -->
 <meta name="application-name" content="LIVE MAX AI">
 
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  LIVE MAX AI — Mix Preference Prompt Configuration (inlined)
+// ═══════════════════════════════════════════════════════════════
+
+const SYSTEM_PROMPT = `
+You are a live PA sound engineer advisor.
+Follow these rules absolutely:
+- Never advise based on hi-fi or studio mixing standards
+- Always consider live PA characteristics: feedback, room reflections, audience absorption
+- Vocal harsh zone: 2.5kHz~5kHz / sibilance zone: 6kHz~8kHz — always be aware of these
+- Be cautious when suggesting boosts in the harsh or sibilance zones
+- Suggest professional methods: fader level, compressor, low-cut, high-cut, EQ, low shelving EQ, high shelving EQ, reverb, etc.
+- Only advise on elements that are clearly audible in the provided audio
+- Always respond in Korean
+`.trim();
+
+const MODE_PROMPTS = {
+  music:  "",
+  speech: "Speech intelligibility is the absolute priority.",
+  mixed:  "Music and vocals should blend harmoniously, with the lead speaker's voice slightly more prominent than other vocalists.",
+};
+
+// ── 한글 키 → 숫자 인덱스 매핑 (HTML의 seg-btn 텍스트와 정확히 일치) ──
+const MIX_PROMPTS = {
+
+  soundDensity: {
+    '두껍게':    "Keep the overall mix thick and layered. Maintain a full, dense sound across all instruments.",
+    '중립':      "No specific instrument, vocal, or frequency range should stand out. Everything should blend harmoniously.",
+    '깔끔하게':  "Keep the mix clean and well-separated. Remove unnecessary low-mid buildup.",
+  },
+
+  vocalTone: {
+    '부드럽게':  "Vocals should sound warm, smooth, and full in the low-mids. Suppress the harsh zone and sibilance zone to the maximum.",
+    '중립':      "Gently suppress the harsh zone and sibilance zone for a smooth vocal tone.",
+    '명료하게':  "Prioritize vocal clarity and definition. Avoid excessive boost that causes listener fatigue.",
+  },
+
+  vocalWeight: {
+    '밴드중심':  "Prioritize overall band energy and balance. Vocals should sit slightly back in the mix.",
+    '균형':      "Vocals and instruments should be evenly balanced and well-audible.",
+    '보컬중심':  "Vocals must always be the most prominent element. Prioritize vocal presence over all other instruments.",
+  },
+
+  bassFeeling: {
+    '타이트':    "Keep low end tight and punchy. Actively remove low-end buildup or booming.",
+    '중립':      "",
+    '풍성하게':  "Keep low end warm and full. Preserve a spacious, rounded low-end sound.",
+  },
+
+  drumPunch: {
+    '자연스럽게':"Drums should sit back slightly, supporting the musical flow without drawing attention.",
+    '중립':      "",
+    '강하게':    "Enhance kick and snare attack and punch. Make drums feel energetic and driving.",
+  },
+
+  speechClarity: {
+    '자연스럽게':"Speech should sound comfortable and natural. Suppress harsh and sibilance zones. Preserve low-mid depth for both male and female speakers.",
+    '중립':      "",
+    '최대명료도':"Consonants and articulation must be clearly heard. Prioritize removing masking elements.",
+  },
+};
+
+function buildMixPrompt(mixPref) {
+  const lines = [];
+  const mode = mixPref.type; // 'music' | 'speech' | 'mixed'
+
+  lines.push(SYSTEM_PROMPT);
+  lines.push('');
+
+  const modePrompt = MODE_PROMPTS[mode];
+  if (modePrompt) {
+    lines.push('[Event type]');
+    lines.push(modePrompt);
+    lines.push('');
+  }
+
+  lines.push('[Mix preference — advise according to these guidelines. Never violate these instructions.]');
+
+  // 공통 — 사운드 밀도
+  const density = MIX_PROMPTS.soundDensity[mixPref.density];
+  if (density) lines.push(`Sound density: ${density}`);
+
+  // 음악 / 혼합 모드
+  if (mode === 'music' || mode === 'mixed') {
+    const vt = MIX_PROMPTS.vocalTone[mixPref.vocalTone];
+    const vw = MIX_PROMPTS.vocalWeight[mixPref.vocalWeight];
+    const bf = MIX_PROMPTS.bassFeeling[mixPref.lowFeel];      // HTML 키: lowFeel
+    const dp = MIX_PROMPTS.drumPunch[mixPref.drumPunch];
+    if (vt) lines.push(`Vocal tone: ${vt}`);
+    if (vw) lines.push(`Vocal weight: ${vw}`);
+    if (bf) lines.push(`Low end: ${bf}`);
+    if (dp) lines.push(`Drums: ${dp}`);
+  }
+
+  // 스피치 / 혼합 모드
+  if (mode === 'speech' || mode === 'mixed') {
+    const sc = MIX_PROMPTS.speechClarity[mixPref.clarity];   // HTML 키: clarity
+    if (sc) lines.push(`Speech clarity: ${sc}`);
+  }
+
+  return lines.filter(l => l !== undefined).join('\n');
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -555,6 +659,21 @@ input[type=range] {
 .btn-add-sit{background:none;border:1px solid rgba(0,255,136,0.3);border-radius:calc(var(--r)*0.8);color:var(--accent);font-size:var(--sm);padding:0 14px;cursor:pointer;white-space:nowrap;transition:all 0.2s}
 .btn-add-sit:hover{background:rgba(0,255,136,0.08)}
 
+/* ── ACCORDION ── */
+.acc-title{display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono);font-size:var(--xs);color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;padding-bottom:clamp(6px,1vw,8px);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:color 0.2s;}
+.acc-title:hover{color:var(--text);}
+.acc-arrow{font-size:var(--xs);transition:transform 0.2s;flex-shrink:0;}
+.acc-body{overflow:hidden;max-height:0;transition:max-height 0.35s ease;display:flex;flex-direction:column;gap:clamp(8px,1.5vw,12px);}
+.acc-body.open{max-height:1400px;padding-top:clamp(8px,1.5vw,12px);}
+
+/* ── SEGMENT BUTTONS ── */
+.seg-row{display:flex;flex-direction:column;gap:clamp(3px,0.5vw,5px);}
+.seg-label{font-family:var(--font-mono);font-size:var(--xs);color:var(--muted2);}
+.seg-group{display:flex;gap:4px;}
+.seg-btn{flex:1;padding:clamp(6px,1.1vw,9px) clamp(4px,0.8vw,8px);background:var(--surface2);border:1px solid var(--border);border-radius:calc(var(--r)*0.7);color:var(--muted2);font-family:var(--font-body);font-size:clamp(10px,1.8vw,13px);cursor:pointer;text-align:center;transition:all 0.2s;line-height:1.2;}
+.seg-btn:hover{border-color:var(--border2);color:var(--text);}
+.seg-btn.active{border-color:var(--accent);background:rgba(0,255,136,0.1);color:var(--accent);}
+
 /* detect result */
 .detect-result{display:none;flex-direction:column;gap:clamp(6px,1vw,10px)}
 
@@ -569,6 +688,13 @@ input[type=range] {
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── 모바일: 헤더 패딩 타이트하게 ── */
+@media (max-width: 768px) {
+  header {
+    padding: 5px 8px !important;
+  }
+}
 
 /* ── 모바일 세로: 컨트롤·헤더 크게 ── */
 @media (max-width: 767px) and (orientation: portrait) {
@@ -677,6 +803,100 @@ input[type=range] {
   justify-content: center;
 }
 .sit-chip .sit-del:hover { opacity: 1; color: var(--danger); }
+
+/* ── FULLSCREEN EXPAND (모바일/태블릿 ≤ 1024px) ── */
+/* 데스크톱 포함 전역 기본값: 닫기 버튼 숨김 */
+.fs-close-btn { display: none; }
+.graph-pane, .advice-pane { position: relative; }
+
+@media (max-width: 1024px) {
+  /* 닫기 버튼 스타일 */
+  .fs-close-btn {
+    display: none;
+    position: absolute;
+    top: max(10px, calc(env(safe-area-inset-top) + 8px));
+    right: max(10px, calc(env(safe-area-inset-right) + 8px));
+    z-index: 210;
+    background: rgba(15,18,24,0.88);
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.18s;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+  .fs-close-btn:active { background: rgba(255,255,255,0.13); }
+
+  /* 풀스크린 공통 */
+  .graph-pane.fs-open,
+  .advice-pane.fs-open {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    z-index: 200 !important;
+    border-right: none !important;
+    border-top: none !important;
+    animation: fsScaleIn 0.22s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+
+  /* 그래프 풀스크린 */
+  .graph-pane.fs-open {
+    background: var(--bg) !important;
+    padding: calc(env(safe-area-inset-top) + 48px) clamp(12px,3vw,22px) calc(env(safe-area-inset-bottom) + 12px) !important;
+    overflow-y: auto;
+    gap: clamp(8px,1.5vw,14px) !important;
+  }
+  .graph-pane.fs-open canvas#meter {
+    height: clamp(160px, 28vh, 300px) !important;
+  }
+
+  /* 조언창 풀스크린 */
+  .advice-pane.fs-open {
+    background: var(--bg) !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .advice-pane.fs-open .cards-scroll {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+  }
+
+  /* 풀스크린 시 닫기 버튼 표시 */
+  .graph-pane.fs-open .fs-close-btn,
+  .advice-pane.fs-open .fs-close-btn {
+    display: flex;
+  }
+
+  /* 캔버스 탭 래퍼 */
+  .canvas-tap-wrap {
+    position: relative;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 조언창 탭 영역 */
+  .advice-header {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .cards-scroll {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @keyframes fsScaleIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+}
 </style>
 </head>
 <body>
@@ -696,8 +916,11 @@ input[type=range] {
   <div class="main-body">
 
     <!-- GRAPH PANE -->
-    <div class="graph-pane">
-      <canvas id="meter"></canvas>
+    <div class="graph-pane" id="graph-pane">
+      <button class="fs-close-btn" onclick="closeFS(event)" aria-label="닫기">✕</button>
+      <div class="canvas-tap-wrap" id="canvas-tap-wrap">
+        <canvas id="meter"></canvas>
+      </div>
       <div class="freq-labels">
         <span>20</span><span>50</span><span>100</span><span>200</span>
         <span>500</span><span>1k</span><span>2k</span><span>5k</span>
@@ -709,7 +932,7 @@ input[type=range] {
       <!-- Controls -->
       <div class="controls-row">
         <div class="controls-toggle-header" id="controls-toggle-header" onclick="toggleControlsPanel()">
-          <span id="controls-toggle-label">CONTROLS ▼</span>
+          <span id="controls-toggle-label">CONTROLS ▲</span>
         </div>
         <div class="controls-collapsible" id="controls-collapsible">
         <!-- AGC + Source row -->
@@ -771,8 +994,9 @@ input[type=range] {
     </div>
 
     <!-- ADVICE PANE -->
-    <div class="advice-pane">
-      <div class="advice-header">
+    <div class="advice-pane" id="advice-pane">
+      <button class="fs-close-btn" onclick="closeFS(event)" aria-label="닫기">✕</button>
+      <div class="advice-header" id="advice-header">
         <span class="advice-title">조언</span>
       </div>
       <div class="cards-scroll" id="cards-scroll">
@@ -810,123 +1034,227 @@ input[type=range] {
     </div>
     <div class="settings-inner">
 
-      <!-- Input device -->
+      <!-- ▶ 입력 장치 -->
       <div class="setting-section">
-        <div class="setting-section-title">입력 장치</div>
-        <select class="api-input" id="device-select" onchange="changeDevice(this.value)" style="cursor:pointer">
-          <option value="default">기본 마이크</option>
-        </select>
-        <div class="ch-hint">LIVE 탭을 열면 장치 목록이 자동으로 불러와져요</div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span>입력 장치</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <select class="api-input" id="device-select" onchange="changeDevice(this.value)" style="cursor:pointer">
+            <option value="default">기본 마이크</option>
+          </select>
+          <div class="ch-hint">LIVE 탭을 열면 장치 목록이 자동으로 불러와져요</div>
+        </div>
       </div>
 
-      <!-- Input source -->
+      <!-- ▶ AI 모델 -->
       <div class="setting-section">
-        <div class="setting-section-title">입력 소스 (보정)</div>
-        <div class="radio-group">
-          <div class="radio-option selected" id="src-phone" onclick="selectSource('phone')">
-            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
-            <div><div class="radio-text">핸드폰 마이크</div><div class="radio-sub">저역 보정 자동 적용</div></div>
-          </div>
-          <div class="radio-option" id="src-interface" onclick="selectSource('interface')">
-            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
-            <div><div class="radio-text">오디오 인터페이스</div><div class="radio-sub">보정 없음, 원본 그대로</div></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span>AI 모델</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <div class="radio-group">
+            <div class="radio-option" id="model-2.5-flash" onclick="selectModel('gemini-2.5-flash')">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              <div><div class="radio-text">2.5 Flash</div></div>
+            </div>
+            <div class="radio-option" id="model-3-flash" onclick="selectModel('gemini-3-flash-preview')">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              <div><div class="radio-text">3.0 Flash</div></div>
+            </div>
+            <div class="radio-option" id="model-3.1-flash-lite" onclick="selectModel('gemini-3.1-flash-lite-preview')">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              <div><div class="radio-text">3.1 Flash Lite</div></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- API Key -->
+      <!-- ▶ API Key -->
       <div class="setting-section">
-        <div class="setting-section-title">Gemini API Key</div>
-        <input class="api-input" type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
-      </div>
-
-      <!-- Model -->
-      <div class="setting-section">
-        <div class="setting-section-title">AI 모델</div>
-        <div class="radio-group">
-          <div class="radio-option" id="model-2.5-flash" onclick="selectModel('gemini-2.5-flash')">
-            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
-            <div><div class="radio-text">2.5 Flash</div></div>
-          </div>
-          <div class="radio-option" id="model-3-flash" onclick="selectModel('gemini-3-flash-preview')">
-            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
-            <div><div class="radio-text">3.0 Flash</div></div>
-          </div>
-          <div class="radio-option" id="model-3.1-flash-lite" onclick="selectModel('gemini-3.1-flash-lite-preview')">
-            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
-            <div><div class="radio-text">3.1 Flash Lite</div></div>
-          </div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span>API Key</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <input class="api-input" type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
+          <button class="btn btn-primary" onclick="saveSettings()">저장</button>
         </div>
       </div>
 
-      <!-- Channel config -->
+      <!-- ▶ 공간 환경 -->
       <div class="setting-section">
-        <div class="setting-section-title">채널 구성</div>
-        <div id="channel-view-wrap">
-          <div class="channel-view" id="channel-view"></div>
-          <div class="btn-row" style="margin-top:clamp(6px,1vw,10px)">
-            <button class="btn btn-secondary" onclick="startEditChannels()">수정</button>
-            <button class="btn btn-detect" id="detect-btn" onclick="detectChannels()">🎙 자동 감지</button>
-            <button class="btn btn-secondary" onclick="resetChannels()" style="color:var(--danger);border-color:rgba(255,68,68,0.3)">초기화</button>
+        <div class="acc-title" onclick="toggleAcc(this)"><span>공간 환경</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <div class="seg-row">
+            <div class="seg-label">공간 크기</div>
+            <div class="seg-group" id="seg-venue">
+              <button class="seg-btn" onclick="setSpaceEnv('venue','소형실내',this)">소형실내</button>
+              <button class="seg-btn" onclick="setSpaceEnv('venue','중형실내',this)">중형실내</button>
+              <button class="seg-btn" onclick="setSpaceEnv('venue','대형/야외',this)">대형/야외</button>
+            </div>
+          </div>
+          <div class="seg-row">
+            <div class="seg-label">반사음</div>
+            <div class="seg-group" id="seg-reverb">
+              <button class="seg-btn" onclick="setSpaceEnv('reverb','적음',this)">적음</button>
+              <button class="seg-btn" onclick="setSpaceEnv('reverb','보통',this)">보통</button>
+              <button class="seg-btn" onclick="setSpaceEnv('reverb','많음',this)">많음</button>
+            </div>
+          </div>
+          <div class="seg-row">
+            <div class="seg-label">서브우퍼</div>
+            <div class="seg-group" id="seg-sub">
+              <button class="seg-btn" onclick="setSpaceEnv('sub','없음',this)">없음</button>
+              <button class="seg-btn" onclick="setSpaceEnv('sub','소형',this)">소형</button>
+              <button class="seg-btn" onclick="setSpaceEnv('sub','대형',this)">대형</button>
+            </div>
+          </div>
+          <div class="seg-row">
+            <div class="seg-label">딜레이 스피커</div>
+            <div class="seg-group" id="seg-delay">
+              <button class="seg-btn" onclick="setSpaceEnv('delay','없음',this)">없음</button>
+              <button class="seg-btn" onclick="setSpaceEnv('delay','일부',this)">일부</button>
+              <button class="seg-btn" onclick="setSpaceEnv('delay','풀커버',this)">풀커버</button>
+            </div>
+          </div>
+          <div class="seg-row">
+            <div class="seg-label">피드백 여유</div>
+            <div class="seg-group" id="seg-fb">
+              <button class="seg-btn" onclick="setSpaceEnv('fb','타이트',this)">타이트</button>
+              <button class="seg-btn" onclick="setSpaceEnv('fb','보통',this)">보통</button>
+              <button class="seg-btn" onclick="setSpaceEnv('fb','여유있게',this)">여유있게</button>
+            </div>
+          </div>
+          <textarea class="memo-input" id="space-memo" placeholder="공간 관련 고정 메모..." oninput="saveSpaceMemoLive()"></textarea>
+          <div class="preset-list" id="space-preset-list"></div>
+          <button class="btn btn-secondary" style="width:100%" onclick="saveSpacePreset()">현재 공간 환경을 프리셋으로 저장</button>
+        </div>
+      </div>
+
+      <!-- ▶ 믹스 취향 -->
+      <div class="setting-section">
+        <div class="acc-title" onclick="toggleAcc(this)"><span>믹스 취향</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <div class="seg-row">
+            <div class="seg-label">행사 유형</div>
+            <div class="seg-group" id="seg-mix-type">
+              <button class="seg-btn" onclick="setMixType('music',this)">음악 중심</button>
+              <button class="seg-btn" onclick="setMixType('speech',this)">스피치 중심</button>
+              <button class="seg-btn" onclick="setMixType('mixed',this)">혼합</button>
+            </div>
+            <div id="mix-mixed-hint" class="ch-hint" style="display:none">음악·스피치 취향을 모두 분석에 반영해요. </div>
+          </div>
+          <div class="seg-row" id="density-row">
+            <div class="seg-label">사운드 밀도</div>
+            <div class="seg-group" id="seg-density">
+              <button class="seg-btn" onclick="setMixPref('density','두껍게',this)">두껍게</button>
+              <button class="seg-btn" onclick="setMixPref('density','중립',this)">중립</button>
+              <button class="seg-btn" onclick="setMixPref('density','깔끔하게',this)">깔끔하게</button>
+            </div>
+          </div>
+          <div id="mix-music-fields">
+            <div class="seg-row">
+              <div class="seg-label">보컬 톤</div>
+              <div class="seg-group" id="seg-vocal-tone">
+                <button class="seg-btn" onclick="setMixPref('vocalTone','부드럽게',this)">부드럽게</button>
+                <button class="seg-btn" onclick="setMixPref('vocalTone','중립',this)">중립</button>
+                <button class="seg-btn" onclick="setMixPref('vocalTone','명료하게',this)">명료하게</button>
+              </div>
+            </div>
+            <div class="seg-row">
+              <div class="seg-label">보컬 비중</div>
+              <div class="seg-group" id="seg-vocal-weight">
+                <button class="seg-btn" onclick="setMixPref('vocalWeight','밴드중심',this)">밴드중심</button>
+                <button class="seg-btn" onclick="setMixPref('vocalWeight','균형',this)">균형</button>
+                <button class="seg-btn" onclick="setMixPref('vocalWeight','보컬중심',this)">보컬중심</button>
+              </div>
+            </div>
+            <div class="seg-row">
+              <div class="seg-label">저역 느낌</div>
+              <div class="seg-group" id="seg-low-feel">
+                <button class="seg-btn" onclick="setMixPref('lowFeel','타이트',this)">타이트</button>
+                <button class="seg-btn" onclick="setMixPref('lowFeel','중립',this)">중립</button>
+                <button class="seg-btn" onclick="setMixPref('lowFeel','풍성하게',this)">풍성하게</button>
+              </div>
+            </div>
+            <div class="seg-row">
+              <div class="seg-label">드럼 펀치</div>
+              <div class="seg-group" id="seg-drum-punch">
+                <button class="seg-btn" onclick="setMixPref('drumPunch','자연스럽게',this)">자연스럽게</button>
+                <button class="seg-btn" onclick="setMixPref('drumPunch','중립',this)">중립</button>
+                <button class="seg-btn" onclick="setMixPref('drumPunch','강하게',this)">강하게</button>
+              </div>
+            </div>
+          </div>
+          <div id="mix-speech-fields" style="display:none;flex-direction:column;gap:clamp(8px,1.5vw,12px)">
+            <div class="seg-row">
+              <div class="seg-label">말 명료도</div>
+              <div class="seg-group" id="seg-clarity">
+                <button class="seg-btn" onclick="setMixPref('clarity','자연스럽게',this)">자연스럽게</button>
+                <button class="seg-btn" onclick="setMixPref('clarity','중립',this)">중립</button>
+                <button class="seg-btn" onclick="setMixPref('clarity','최대명료도',this)">최대명료도</button>
+              </div>
+            </div>
+
           </div>
         </div>
-        <div id="channel-edit-wrap" style="display:none">
-          <textarea class="channel-textarea" id="channel-textarea"
-            placeholder="채널 이름을 한 줄에 하나씩 입력&#10;킥&#10;스네어&#10;베이스&#10;보컬 리더"></textarea>
-          <div class="ch-hint">한 줄 = 채널 하나 · 쉼표로 구분도 가능</div>
-          <div class="btn-row" style="margin-top:clamp(8px,1.5vw,12px)">
-            <button class="btn btn-secondary" onclick="cancelEditChannels()">취소</button>
-            <button class="btn btn-primary" onclick="saveChannels()">저장</button>
+      </div>
+
+      <!-- ▶ 즉석 메모 -->
+      <div class="setting-section">
+        <div class="acc-title" onclick="toggleAcc(this)"><span>즉석 메모</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <textarea class="memo-input" id="instant-memo" placeholder="세션 중 메모 (저장 안 됨)..." style="min-height:clamp(80px,15vw,120px)"></textarea>
+          <button class="btn btn-secondary" onclick="document.getElementById('instant-memo').value=''">초기화</button>
+        </div>
+      </div>
+
+      <!-- ▶ 채널 구성 -->
+      <div class="setting-section">
+        <div class="acc-title" onclick="toggleAcc(this)"><span>채널 구성</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <div id="channel-view-wrap">
+            <div class="channel-view" id="channel-view"></div>
+            <div class="btn-row" style="margin-top:clamp(6px,1vw,10px)">
+              <button class="btn btn-secondary" onclick="startEditChannels()">수정</button>
+              <button class="btn btn-detect" id="detect-btn" onclick="detectChannels()">🎙 자동 감지</button>
+              <button class="btn btn-secondary" onclick="resetChannels()" style="color:var(--danger);border-color:rgba(255,68,68,0.3)">초기화</button>
+            </div>
+          </div>
+          <div id="channel-edit-wrap" style="display:none">
+            <textarea class="channel-textarea" id="channel-textarea"
+              placeholder="채널 이름을 한 줄에 하나씩 입력&#10;킥&#10;스네어&#10;베이스&#10;보컬 리더"></textarea>
+            <div class="ch-hint">한 줄 = 채널 하나 · 쉼표로 구분도 가능</div>
+            <div class="btn-row" style="margin-top:clamp(8px,1.5vw,12px)">
+              <button class="btn btn-secondary" onclick="cancelEditChannels()">취소</button>
+              <button class="btn btn-primary" onclick="saveChannels()">저장</button>
+            </div>
+          </div>
+          <div class="detect-result" id="detect-result">
+            <div class="ch-hint" id="detect-hint">감지된 채널 구성이에요. 확인 후 저장하세요.</div>
+            <div class="channel-view" id="detect-channel-view"></div>
+            <div class="btn-row">
+              <button class="btn btn-secondary" onclick="cancelDetect()">취소</button>
+              <button class="btn btn-primary" onclick="applyDetect()">이대로 저장</button>
+            </div>
           </div>
         </div>
-        <div class="detect-result" id="detect-result">
-          <div class="ch-hint" id="detect-hint">감지된 채널 구성이에요. 확인 후 저장하세요.</div>
-          <div class="channel-view" id="detect-channel-view"></div>
+      </div>
+
+      <!-- ▶ 채널 프리셋 -->
+      <div class="setting-section">
+        <div class="acc-title" onclick="toggleAcc(this)"><span>채널 프리셋</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <div class="preset-list" id="preset-list"></div>
+          <button class="btn btn-secondary" style="width:100%;margin-top:clamp(6px,1vw,10px)" onclick="savePreset()">현재 채널 구성을 프리셋으로 저장</button>
+        </div>
+      </div>
+
+      <!-- ▶ 설정 백업 -->
+      <div class="setting-section">
+        <div class="acc-title" onclick="toggleAcc(this)"><span>설정 백업</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
           <div class="btn-row">
-            <button class="btn btn-secondary" onclick="cancelDetect()">취소</button>
-            <button class="btn btn-primary" onclick="applyDetect()">이대로 저장</button>
+            <button class="btn btn-secondary" onclick="exportSettings()">📤 내보내기</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📥 불러오기</button>
           </div>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSettings(event)">
         </div>
       </div>
-
-      <!-- Presets -->
-      <div class="setting-section">
-        <div class="setting-section-title">채널 프리셋</div>
-        <div class="preset-list" id="preset-list"></div>
-        <button class="btn btn-secondary" style="width:100%;margin-top:clamp(6px,1vw,10px)" onclick="savePreset()">현재 채널 구성을 프리셋으로 저장</button>
-      </div>
-
-      <!-- Memo -->
-      <div class="setting-section">
-        <div class="setting-section-title">공연 메모</div>
-        <div class="situation-chips" id="memo-chips"></div>
-        <div style="display:flex;gap:6px;align-items:flex-start">
-          <textarea class="memo-input" id="memo-input" placeholder="오늘 공연 특이사항, 주의 채널 등..." style="flex:1"></textarea>
-          <button class="btn-add-sit" onclick="saveMemoPreset()" style="align-self:flex-end;padding:10px 14px;white-space:nowrap">저장</button>
-        </div>
-      </div>
-
-      <!-- Situation -->
-      <div class="setting-section">
-        <div class="setting-section-title">현재 상황</div>
-        <div class="situation-chips" id="situation-chips"></div>
-        <div class="situation-input-row">
-          <input class="situation-input" id="situation-input" placeholder="직접 입력 후 추가..." maxlength="60">
-          <button class="btn-add-sit" onclick="addSituationPreset()">추가</button>
-        </div>
-      </div>
-
-      <!-- Export / Import -->
-      <div class="setting-section">
-        <div class="setting-section-title">설정 백업</div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="exportSettings()">📤 내보내기</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📥 불러오기</button>
-        </div>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSettings(event)">
-      </div>
-
-      <button class="btn btn-primary" onclick="saveSettings()">저장</button>
 
     </div>
   </div>
@@ -953,11 +1281,9 @@ const state = {
   channels: [],
   presets: [],
   activePreset: null,
-  memo: '',
-  memoPresets: [],
-  situation: '',
-  situationPresets: [],
-  deletedDefaultSituations: [],
+  spaceEnv: { venue:'', reverb:'', sub:'', delay:'', fb:'', memo:'' },
+  spacePresets: [],
+  mixPref: { type:'music', density:'중립', vocalTone:'중립', vocalWeight:'균형', lowFeel:'중립', drumPunch:'중립', clarity:'중립' },
   micStream: null,
   audioCtx: null,
   analyser: null,
@@ -977,6 +1303,7 @@ const state = {
   manualGain: 1.0,
   deviceId: 'default',
   devices: [],
+  wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
 };
 
@@ -992,22 +1319,21 @@ function loadSettings() {
     if (s.channels)  state.channels  = s.channels;
     if (s.presets)   state.presets   = s.presets;
     if (s.source)    state.source    = s.source;
-    if (s.memo)      state.memo      = s.memo;
-    if (Array.isArray(s.memoPresets)) state.memoPresets = s.memoPresets;
-    if (s.situation) state.situation = s.situation;
-    if (s.situationPresets) state.situationPresets = s.situationPresets;
-    if (Array.isArray(s.deletedDefaultSituations)) state.deletedDefaultSituations = s.deletedDefaultSituations;
     if (s.realtimeOn !== undefined) state.realtimeOn = s.realtimeOn;
     if (s.deviceId)  state.deviceId  = s.deviceId;
     if (s.model)     state.model     = s.model;
+    const se = JSON.parse(localStorage.getItem('space_env') || 'null');
+    if (se) state.spaceEnv = { ...state.spaceEnv, ...se };
+    const sp = JSON.parse(localStorage.getItem('space_presets') || 'null');
+    if (Array.isArray(sp)) state.spacePresets = sp;
+    const mp = JSON.parse(localStorage.getItem('mix_pref') || 'null');
+    if (mp) state.mixPref = { ...state.mixPref, ...mp };
   } catch(e) {}
 }
 function saveToStorage() {
   localStorage.setItem('livemaxai', JSON.stringify({
     apiKey: state.apiKey, channels: state.channels, presets: state.presets,
-    source: state.source, memo: state.memo, memoPresets: state.memoPresets, situation: state.situation,
-    situationPresets: state.situationPresets, deletedDefaultSituations: state.deletedDefaultSituations,
-    realtimeOn: state.realtimeOn, deviceId: state.deviceId,
+    source: state.source, realtimeOn: state.realtimeOn, deviceId: state.deviceId,
     model: state.model,
   }));
 }
@@ -1031,13 +1357,18 @@ function setLamp(mode, label) {
 }
 
 // ── AUDIO INIT ──
-async function initAudio(deviceId) {
+async function initAudio(deviceId, existingStream) {
   try {
     if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
     if (state.audioCtx)  { await state.audioCtx.close(); state.audioCtx = null; state.analyser = null; state.compressor = null; }
 
-    const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true, video: false };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    let stream;
+    if (existingStream) {
+      stream = existingStream;
+    } else {
+      const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true, video: false };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    }
     state.micStream = stream;
     state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
     state.analyser  = state.audioCtx.createAnalyser();
@@ -1061,6 +1392,7 @@ async function initAudio(deviceId) {
     state.lowshelf.connect(state.analyser);
 
     setLamp('active', '청음중');
+    await acquireWakeLock();
     await loadDevices();
     return true;
   } catch(e) {
@@ -1080,6 +1412,26 @@ function showError(msg) {
   alert(msg);
 }
 
+// ── WAKE LOCK ──
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    if (state.wakeLock) return;
+    state.wakeLock = await navigator.wakeLock.request('screen');
+    state.wakeLock.addEventListener('release', () => { state.wakeLock = null; });
+  } catch(e) {}
+}
+async function releaseWakeLock() {
+  if (!state.wakeLock) return;
+  try { await state.wakeLock.release(); } catch(e) {}
+  state.wakeLock = null;
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && state.micStream) {
+    await acquireWakeLock();
+  }
+});
+
 async function loadDevices() {
   try {
     const devs = await navigator.mediaDevices.enumerateDevices();
@@ -1097,8 +1449,39 @@ function renderDeviceSelect() {
   ).join('');
 }
 async function changeDevice(deviceId) {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  let newStream = null;
+
+  // Pre-request permission before switching
+  try {
+    newStream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: { exact: deviceId } },
+      video: false
+    });
+  } catch(e) {
+    if (isAndroid || e.name === 'OverconstrainedError') {
+      // Android PWA fallback: use ideal instead of exact
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { ideal: deviceId } },
+          video: false
+        });
+      } catch(e2) {
+        showError('이 마이크를 사용하려면 권한이 필요해요');
+        renderDeviceSelect(); // revert UI to current device
+        return;
+      }
+    } else {
+      showError('이 마이크를 사용하려면 권한이 필요해요');
+      renderDeviceSelect(); // revert UI to current device
+      return;
+    }
+  }
+
+  // Success: replace stream
   state.deviceId = deviceId;
-  await initAudio(deviceId);
+  saveToStorage();
+  await initAudio(deviceId, newStream);
 }
 
 // ── AGC ──
@@ -1507,22 +1890,44 @@ async function analyzeWithGemini(audioBlob, num) {
   const statusEl = document.getElementById('status-'+num);
   try {
     const base64 = await blobToBase64(audioBlob);
-    const channelInfo = state.channels.length ? '채널 구성: '+state.channels.map((c,i)=>`ch${i+1}=${c}`).join(', ') : '채널 구성 정보 없음';
-    const sourceInfo  = state.source==='phone' ? '입력: 핸드폰 마이크' : '입력: 오디오 인터페이스';
-    const memo        = state.memo ? '공연 메모: '+state.memo : '';
-    const situation   = state.situation ? '현재 상황: '+state.situation : '';
 
-    const prompt = `당신은 라이브 공연 믹스 엔지니어 어시스턴트 MaxAI입니다.
-${channelInfo}
-${sourceInfo}
-${situation}
-${memo}
+    // 1. SYSTEM_PROMPT + 믹스 취향 (prompts.js)
+    const mixSection = buildMixPrompt(state.mixPref);
+
+    // 2. 공간 환경 + 공간 메모
+    const env = state.spaceEnv;
+    const envParts = [];
+    if (env.venue)  envParts.push(`공간크기=${env.venue}`);
+    if (env.reverb) envParts.push(`반사음=${env.reverb}`);
+    if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
+    if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
+    if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
+    const spaceSection = [
+      envParts.length ? '공간 환경: ' + envParts.join(', ') : '',
+      env.memo ? '공간 메모: ' + env.memo : '',
+    ].filter(Boolean).join('\n');
+
+    // 3. 채널 구성
+    const channelInfo = state.channels.length
+      ? '채널 구성: ' + state.channels.map((c,i) => `ch${i+1}=${c}`).join(', ')
+      : '채널 구성 정보 없음';
+
+    // 4. 입력 소스
+    const sourceInfo = state.source === 'phone' ? '입력: 핸드폰 마이크' : '입력: 오디오 인터페이스';
+
+    // 5. 즉석 메모
+    const instantMemo = document.getElementById('instant-memo')?.value.trim();
+    const memoSection = instantMemo ? '즉석 메모: ' + instantMemo : '';
+
+    const contextBlock = [mixSection, spaceSection, channelInfo, sourceInfo, memoSection].filter(Boolean).join('\n');
+
+    const prompt = `${contextBlock}
 
 첨부된 5초 오디오를 듣고 믹스 엔지니어에게 조언해주세요.
 
 규칙:
 - 조용하거나 음악이 없으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
-- 음악이 있으면 아래 우선순위로 가장 중요한 문제 1가지만 골라 조언:
+- 음악이 있으면 아래 우선순위로 가장 중요한 문제 1-3가지만 골라 조언:
   1. 채널 간 밸런스  2. 채널 EQ/컴프  3. 채널 리버브/이펙트  4. 하울링  5. 전체 밸런스
 - 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")
 - 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")
@@ -1594,13 +1999,7 @@ function blobToBase64(blob) {
 
 // ── SETTINGS ──
 function renderSettings() {
-  document.getElementById('src-phone').classList.toggle('selected', state.source==='phone');
-  document.getElementById('src-interface').classList.toggle('selected', state.source==='interface');
-  document.querySelectorAll('.radio-dot-inner').forEach((d,i) => {
-    d.style.display = (i===0&&state.source==='phone')||(i===1&&state.source==='interface') ? 'block':'none';
-  });
   document.getElementById('api-key-input').value = state.apiKey;
-  document.getElementById('memo-input').value = state.memo;
   document.getElementById('rt-toggle').checked = state.realtimeOn;
   const modelMap = {
     'gemini-2.5-flash': 'model-2.5-flash',
@@ -1616,9 +2015,9 @@ function renderSettings() {
   });
   renderChannelView();
   renderPresets();
-  renderMemoChips();
-  renderSituationChips();
   renderDeviceSelect();
+  renderSpaceEnv();
+  renderMixPref();
 }
 function selectSource(src) { state.source=src; renderSettings(); }
 function selectModel(val) { state.model=val; saveToStorage(); renderSettings(); }
@@ -1739,6 +2138,7 @@ function renderPresets() {
 }
 function savePreset() {
   if (!state.channels.length) { alert('채널 구성을 먼저 입력해주세요.'); return; }
+  _modalMode = 'channel';
   document.getElementById('modal-input').value='';
   document.getElementById('modal-overlay').classList.add('show');
   document.getElementById('modal-input').focus();
@@ -1751,12 +2151,20 @@ function editPreset(i) {
   document.getElementById('modal-input').focus();
 }
 function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+let _modalMode = 'channel';
 function confirmPreset() {
   const name=document.getElementById('modal-input').value.trim();
   if(!name) return;
-  if(window._presetEditIdx!==null) state.presets[window._presetEditIdx].name=name;
-  else state.presets.push({name,channels:[...state.channels]});
-  saveToStorage(); closeModal(); renderPresets();
+  if (_modalMode === 'space') {
+    flushSpaceMemo();
+    state.spacePresets.push({ name, env: {...state.spaceEnv} });
+    localStorage.setItem('space_presets', JSON.stringify(state.spacePresets));
+    closeModal(); renderSpacePresets();
+  } else {
+    if(window._presetEditIdx!==null) state.presets[window._presetEditIdx].name=name;
+    else state.presets.push({name,channels:[...state.channels]});
+    saveToStorage(); closeModal(); renderPresets();
+  }
 }
 function loadPreset(i) { state.channels=[...state.presets[i].channels]; state.activePreset=i; renderChannelView(); renderPresets(); saveToStorage(); }
 function resetChannels() { if(!confirm('채널 구성을 초기화할까요?')) return; state.channels=[]; state.activePreset=null; renderChannelView(); renderPresets(); saveToStorage(); }
@@ -1766,22 +2174,20 @@ function deletePreset(i) {
 }
 function saveSettings() {
   state.apiKey=document.getElementById('api-key-input').value.trim();
-  state.memo=document.getElementById('memo-input').value.trim();
   saveToStorage(); alert('저장됐어요 ✓');
 }
 
 function exportSettings() {
+  flushSpaceMemo();
   const data = {
     apiKey: state.apiKey,
     channels: state.channels,
     presets: state.presets,
     source: state.source,
-    memo: state.memo,
-    memoPresets: state.memoPresets,
-    situation: state.situation,
-    situationPresets: state.situationPresets,
-    deletedDefaultSituations: state.deletedDefaultSituations,
     model: state.model,
+    spaceEnv: state.spaceEnv,
+    spacePresets: state.spacePresets,
+    mixPref: state.mixPref,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1805,12 +2211,10 @@ function importSettings(event) {
       if (Array.isArray(data.channels)) state.channels = data.channels;
       if (Array.isArray(data.presets)) state.presets = data.presets;
       if (data.source) state.source = data.source;
-      if (data.memo !== undefined) state.memo = data.memo;
-      if (Array.isArray(data.memoPresets)) state.memoPresets = data.memoPresets;
-      if (data.situation !== undefined) state.situation = data.situation;
-      if (Array.isArray(data.situationPresets)) state.situationPresets = data.situationPresets;
-      if (Array.isArray(data.deletedDefaultSituations)) state.deletedDefaultSituations = data.deletedDefaultSituations;
       if (data.model) state.model = data.model;
+      if (data.spaceEnv) { state.spaceEnv = { ...state.spaceEnv, ...data.spaceEnv }; localStorage.setItem('space_env', JSON.stringify(state.spaceEnv)); }
+      if (Array.isArray(data.spacePresets)) { state.spacePresets = data.spacePresets; localStorage.setItem('space_presets', JSON.stringify(state.spacePresets)); }
+      if (data.mixPref) { state.mixPref = { ...state.mixPref, ...data.mixPref }; localStorage.setItem('mix_pref', JSON.stringify(state.mixPref)); }
       saveToStorage();
       renderSettings();
       alert('설정을 불러왔어요 ✓');
@@ -1827,121 +2231,168 @@ document.getElementById('modal-input').addEventListener('keydown', e=>{
   if(e.key==='Escape') closeModal();
 });
 
-// ── MEMO PRESETS ──
-function renderMemoChips() {
-  const el = document.getElementById('memo-chips');
-  if (!el) return;
-  if (!state.memoPresets.length) { el.innerHTML = ''; return; }
-  el.innerHTML = state.memoPresets.map((t, i) => {
-    const active = state.memo === t ? ' active' : '';
-    return `<div class="sit-chip${active}" onclick="selectMemoPreset(${i})">${t.length > 20 ? t.slice(0,20)+'…' : t}<span class="sit-del" onclick="event.stopPropagation();deleteMemoPreset(${i})">✕</span></div>`;
-  }).join('');
-}
-
-function selectMemoPreset(idx) {
-  const t = state.memoPresets[idx];
-  if (state.memo === t) {
-    state.memo = '';
-  } else {
-    state.memo = t;
+// ── ACCORDION ──
+function toggleAcc(titleEl) {
+  const body = titleEl.nextElementSibling;
+  const willOpen = !body.classList.contains('open');
+  // 모든 섹션 닫기
+  document.querySelectorAll('.acc-body').forEach(b => {
+    b.classList.remove('open');
+    const arr = b.previousElementSibling?.querySelector('.acc-arrow');
+    if (arr) arr.textContent = '▶';
+  });
+  if (willOpen) {
+    body.classList.add('open');
+    titleEl.querySelector('.acc-arrow').textContent = '▼';
   }
-  document.getElementById('memo-input').value = state.memo;
-  saveToStorage();
-  renderMemoChips();
 }
 
-function saveMemoPreset() {
-  const val = document.getElementById('memo-input').value.trim();
-  if (!val) return;
-  state.memo = val;
-  if (!state.memoPresets.includes(val)) {
-    state.memoPresets.push(val);
-  }
-  saveToStorage();
-  renderMemoChips();
-}
-
-function deleteMemoPreset(idx) {
-  const text = state.memoPresets[idx];
-  if (state.memo === text) state.memo = '';
-  state.memoPresets.splice(idx, 1);
-  saveToStorage();
-  renderMemoChips();
-  document.getElementById('memo-input').value = state.memo;
-}
-
-// ── SITUATION PRESETS ──
-const DEFAULT_SITUATIONS = [
-  { label:'예배 인도', text:'예배 인도자(보컬)가 항상 가장 선명하게 들려야 함. 다른 악기나 음악 볼륨을 올리는 조언은 하지 말 것. 인도자 볼륨 확보를 최우선으로.' },
-  { label:'찬양 집회', text:'전체 에너지와 밴드 밸런스 우선. 드럼과 베이스 펀치감을 살릴 것.' },
-  { label:'소편성', text:'악기 수가 적음. 공간감과 리버브 균형 중심으로 조언.' },
-  { label:'방송/녹음', text:'청중보다 방송·녹음 음질 우선. 클리핑에 주의할 것.' },
+// ── SPACE ENV ──
+const DEFAULT_SPACE_PRESETS = [
+  { name:'소규모 교회 PA', env:{ venue:'소형실내', reverb:'많음', sub:'없음', delay:'없음', fb:'타이트', memo:'반사음 많은 실내. 명료도 최우선. 저역 누적 주의. 하이파이 기준 조언 금지.' } },
+  { name:'대형 공연장 PA', env:{ venue:'대형/야외', reverb:'보통', sub:'대형', delay:'풀커버', fb:'여유있게', memo:'딜레이 스피커 있음. 저역 에너지 강함. 피드백 민감 구간 주의.' } },
 ];
-
-function renderSituationChips() {
-  const el = document.getElementById('situation-chips');
+function initSpacePresets() {
+  if (!localStorage.getItem('space_presets')) {
+    state.spacePresets = DEFAULT_SPACE_PRESETS.map(p => ({...p, env:{...p.env}}));
+    localStorage.setItem('space_presets', JSON.stringify(state.spacePresets));
+  }
+}
+function flushSpaceMemo() {
+  const el = document.getElementById('space-memo');
+  if (el) state.spaceEnv.memo = el.value.trim();
+}
+function saveSpaceMemoLive() {
+  flushSpaceMemo();
+  localStorage.setItem('space_env', JSON.stringify(state.spaceEnv));
+}
+function setSpaceEnv(key, val, btn) {
+  state.spaceEnv[key] = val;
+  const group = btn.closest('.seg-group');
+  group.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  flushSpaceMemo();
+  localStorage.setItem('space_env', JSON.stringify(state.spaceEnv));
+}
+function renderSpaceEnv() {
+  const env = state.spaceEnv;
+  const segMap = { venue:'seg-venue', reverb:'seg-reverb', sub:'seg-sub', delay:'seg-delay', fb:'seg-fb' };
+  Object.entries(segMap).forEach(([key, groupId]) => {
+    const g = document.getElementById(groupId);
+    if (!g) return;
+    g.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === env[key]));
+  });
+  const memoEl = document.getElementById('space-memo');
+  if (memoEl) memoEl.value = env.memo || '';
+  renderSpacePresets();
+}
+function renderSpacePresets() {
+  const el = document.getElementById('space-preset-list');
   if (!el) return;
-  const defaults = DEFAULT_SITUATIONS.filter(s => !state.deletedDefaultSituations.includes(s.label));
-  const all = [
-    ...defaults.map(s => ({ ...s, isDefault: true })),
-    ...state.situationPresets.map((t,i) => ({ label: t, text: t, custom: true, idx: i }))
-  ];
-  el.innerHTML = all.map((s) => {
-    const active = state.situation === s.text ? ' active' : '';
-    let del = '';
-    if (s.custom) del = `<span class="sit-del" onclick="event.stopPropagation();deleteSituation(${s.idx})">✕</span>`;
-    else if (s.isDefault) del = `<span class="sit-del" onclick="event.stopPropagation();deleteDefaultSituation('${s.label}')">✕</span>`;
-    return `<div class="sit-chip${active}" onclick="selectSituation('${s.text.replace(/'/g,"\\'")}', this)">${s.label}${del}</div>`;
-  }).join('');
+  if (!state.spacePresets.length) { el.innerHTML = ''; return; }
+  el.innerHTML = state.spacePresets.map((p, i) => `
+    <div class="preset-item" onclick="loadSpacePreset(${i})">
+      <div class="preset-dot"></div>
+      <div class="preset-name">${p.name}</div>
+      <div class="preset-actions">
+        <button class="preset-btn del" onclick="event.stopPropagation();deleteSpacePreset(${i})">삭제</button>
+      </div>
+    </div>`).join('');
+}
+function saveSpacePreset() {
+  flushSpaceMemo();
+  _modalMode = 'space';
+  document.getElementById('modal-input').value = '';
+  document.getElementById('modal-overlay').classList.add('show');
+  document.getElementById('modal-input').focus();
+}
+function loadSpacePreset(i) {
+  state.spaceEnv = { ...state.spacePresets[i].env };
+  localStorage.setItem('space_env', JSON.stringify(state.spaceEnv));
+  renderSpaceEnv();
+}
+function deleteSpacePreset(i) {
+  if (!confirm(`"${state.spacePresets[i].name}" 프리셋을 삭제할까요?`)) return;
+  state.spacePresets.splice(i, 1);
+  localStorage.setItem('space_presets', JSON.stringify(state.spacePresets));
+  renderSpacePresets();
 }
 
-function selectSituation(text, el) {
-  if (state.situation === text) {
-    state.situation = '';
-  } else {
-    state.situation = text;
+// ── MIX PREF ──
+function setMixType(type, btn) {
+  state.mixPref.type = type;
+  const g = document.getElementById('seg-mix-type');
+  if (g) g.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  localStorage.setItem('mix_pref', JSON.stringify(state.mixPref));
+  renderMixPref();
+}
+function setMixPref(key, val, btn) {
+  state.mixPref[key] = val;
+  const group = btn.closest('.seg-group');
+  group.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  localStorage.setItem('mix_pref', JSON.stringify(state.mixPref));
+}
+function renderMixPref() {
+  const p = state.mixPref;
+  const typeGroup = document.getElementById('seg-mix-type');
+  if (typeGroup) {
+    const typeMap = {'음악 중심':'music','혼합':'mixed','스피치 중심':'speech'};
+    typeGroup.querySelectorAll('.seg-btn').forEach(btn => {
+      btn.classList.toggle('active', typeMap[btn.textContent] === p.type);
+    });
   }
-  saveToStorage();
-  renderSituationChips();
+  const musicFields = document.getElementById('mix-music-fields');
+  const speechFields = document.getElementById('mix-speech-fields');
+  const mixedHint = document.getElementById('mix-mixed-hint');
+  const densityRow = document.getElementById('density-row');
+  if (densityRow) densityRow.style.display = p.type === 'mixed' ? 'none' : 'flex';
+  if (musicFields) musicFields.style.display = p.type === 'music' ? 'block' : 'none';
+  if (speechFields) speechFields.style.display = p.type === 'speech' ? 'flex' : 'none';
+  if (mixedHint) mixedHint.style.display = p.type === 'mixed' ? 'block' : 'none';
+  const prefMap = {
+    density:'seg-density', vocalTone:'seg-vocal-tone', vocalWeight:'seg-vocal-weight',
+    lowFeel:'seg-low-feel', drumPunch:'seg-drum-punch', clarity:'seg-clarity',
+  };
+  Object.entries(prefMap).forEach(([key, groupId]) => {
+    const g = document.getElementById(groupId);
+    if (!g) return;
+    g.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === p[key]));
+  });
 }
 
-function addSituationPreset() {
-  const input = document.getElementById('situation-input');
-  const val = input.value.trim();
-  if (!val) return;
-  if (!state.situationPresets.includes(val)) {
-    state.situationPresets.push(val);
-  }
-  state.situation = val;
-  saveToStorage();
-  input.value = '';
-  renderSituationChips();
-}
 
-function deleteSituation(idx) {
-  const text = state.situationPresets[idx];
-  if (state.situation === text) state.situation = '';
-  state.situationPresets.splice(idx, 1);
-  saveToStorage();
-  renderSituationChips();
-}
+// ── BUILD CONTEXT FOR AI ──
+function buildAIContext() {
+  const env = state.spaceEnv;
+  const p = state.mixPref;
+  const parts = [];
 
-function deleteDefaultSituation(label) {
-  const def = DEFAULT_SITUATIONS.find(s => s.label === label);
-  if (def && state.situation === def.text) state.situation = '';
-  if (!state.deletedDefaultSituations.includes(label)) {
-    state.deletedDefaultSituations.push(label);
-  }
-  saveToStorage();
-  renderSituationChips();
-}
+  // 공간 환경
+  const envParts = [];
+  if (env.venue)  envParts.push(`공간크기=${env.venue}`);
+  if (env.reverb) envParts.push(`반사음=${env.reverb}`);
+  if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
+  if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
+  if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
+  if (envParts.length) parts.push('공간 환경: ' + envParts.join(', '));
+  if (env.memo)   parts.push('공간 메모: ' + env.memo);
 
-document.getElementById('situation-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addSituationPreset();
-});
+  // 믹스 취향 — prompts.js의 buildMixPrompt 호출
+  const mixPrompt = buildMixPrompt(p);
+  if (mixPrompt) parts.push(mixPrompt);
+
+  // 즉석 메모
+  const instantMemo = document.getElementById('instant-memo')?.value.trim();
+  if (instantMemo) parts.push('즉석 메모: ' + instantMemo);
+
+  return parts.join('\n');
+}
 
 // ── INIT ──
 loadSettings();
+initSpacePresets();
 renderChannelView();
 updateSourceUI();
 drawMeter();
@@ -1978,7 +2429,7 @@ function toggleControlsPanel() {
     // Expand
     el.style.height = el.scrollHeight + 'px';
     el.classList.remove('is-collapsed');
-    label.textContent = 'CONTROLS ▲';
+    label.textContent = 'CONTROLS ▼';
     localStorage.setItem('controlsPanelOpen', '1');
     el.addEventListener('transitionend', function onEnd() {
       el.style.height = 'auto';
@@ -1991,7 +2442,7 @@ function toggleControlsPanel() {
       requestAnimationFrame(() => {
         el.style.height = '0px';
         el.classList.add('is-collapsed');
-        label.textContent = 'CONTROLS ▼';
+        label.textContent = 'CONTROLS ▲';
         localStorage.setItem('controlsPanelOpen', '0');
       });
     });
@@ -2015,17 +2466,101 @@ function initControlsPanel() {
   if (saved === '1') {
     el.style.height = 'auto';
     el.classList.remove('is-collapsed');
-    label.textContent = 'CONTROLS ▲';
+    label.textContent = 'CONTROLS ▼';
   } else {
     // 기본: 접힌 상태
     el.style.height = '0px';
     el.classList.add('is-collapsed');
-    label.textContent = 'CONTROLS ▼';
+    label.textContent = 'CONTROLS ▲';
   }
 }
 
 document.addEventListener('DOMContentLoaded', initControlsPanel);
 _ctrlMQ.addEventListener('change', initControlsPanel);
+</script>
+
+<script>
+// ── FULLSCREEN EXPAND (모바일/태블릿 ≤ 1024px) ──
+(function initFS() {
+  const FS_MQ = window.matchMedia('(max-width: 1024px)');
+
+  function isFSEnabled() { return FS_MQ.matches; }
+
+  function openFS(paneId) {
+    if (!isFSEnabled()) return;
+    document.getElementById(paneId).classList.add('fs-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  window.closeFS = function(e) {
+    if (e) e.stopPropagation();
+    const gp = document.getElementById('graph-pane');
+    const ap = document.getElementById('advice-pane');
+    if (gp) gp.classList.remove('fs-open');
+    if (ap) ap.classList.remove('fs-open');
+    document.body.style.overflow = '';
+  };
+
+  // 캔버스 탭 → 그래프 풀스크린 토글
+  const canvasTapWrap = document.getElementById('canvas-tap-wrap');
+  if (canvasTapWrap) {
+    canvasTapWrap.addEventListener('click', function(e) {
+      if (!isFSEnabled()) return;
+      const gp = document.getElementById('graph-pane');
+      if (gp.classList.contains('fs-open')) {
+        closeFS(e);
+      } else {
+        openFS('graph-pane');
+      }
+    });
+  }
+
+  // 조언 헤더 탭 → 조언창 풀스크린 토글
+  const adviceHeader = document.getElementById('advice-header');
+  if (adviceHeader) {
+    adviceHeader.addEventListener('click', function(e) {
+      if (!isFSEnabled()) return;
+      const ap = document.getElementById('advice-pane');
+      if (ap.classList.contains('fs-open')) {
+        closeFS(e);
+      } else {
+        openFS('advice-pane');
+      }
+    });
+  }
+
+  // 조언 카드 영역 탭 → 조언창 풀스크린 열기 (스크롤과 구분)
+  const cardsScroll = document.getElementById('cards-scroll');
+  if (cardsScroll) {
+    let _tsX = 0, _tsY = 0, _tsMoved = false;
+
+    cardsScroll.addEventListener('touchstart', function(e) {
+      _tsX = e.touches[0].clientX;
+      _tsY = e.touches[0].clientY;
+      _tsMoved = false;
+    }, { passive: true });
+
+    cardsScroll.addEventListener('touchmove', function(e) {
+      if (Math.abs(e.touches[0].clientX - _tsX) > 8 ||
+          Math.abs(e.touches[0].clientY - _tsY) > 8) {
+        _tsMoved = true;
+      }
+    }, { passive: true });
+
+    cardsScroll.addEventListener('touchend', function(e) {
+      if (!isFSEnabled() || _tsMoved) return;
+      const ap = document.getElementById('advice-pane');
+      if (!ap.classList.contains('fs-open')) {
+        openFS('advice-pane');
+      }
+    });
+  }
+
+  // 화면 넓어지면 풀스크린 자동 해제
+  FS_MQ.addEventListener('change', function(ev) {
+    if (!ev.matches) closeFS();
+  });
+})();
 </script>
 
 <script>
