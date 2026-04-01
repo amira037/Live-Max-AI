@@ -763,6 +763,33 @@ input[type=range] {
   .ctrl-rt-label { font-size: 13px !important; }
 }
 
+/* ── 태블릿 세로(768~1023px): 컨트롤 토글 헤더 활성화 ── */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+  .controls-toggle-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 11px 14px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--muted2);
+    user-select: none;
+    border-radius: var(--r);
+    letter-spacing: 0.05em;
+  }
+  .controls-toggle-header:active { opacity: 0.7; }
+  .controls-collapsible {
+    overflow: hidden;
+    transition: height 0.3s ease;
+  }
+  .controls-collapsible.is-collapsed {
+    height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
+
 /* ── 모바일 설정 패널 폰트 크게 ── */
 @media (max-width: 767px) {
   .settings-panel {
@@ -2434,7 +2461,7 @@ document.addEventListener('touchstart', async () => {
 }, { once: true });
 
 // Controls panel collapse (mobile portrait only)
-const _ctrlMQ = window.matchMedia('(max-width: 768px) and (orientation: portrait)');
+const _ctrlMQ = window.matchMedia('(max-width: 1023px) and (orientation: portrait)');
 
 function _isControlsMobile() {
   return _ctrlMQ.matches;
