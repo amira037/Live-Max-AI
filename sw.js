@@ -1,11 +1,11 @@
-const CACHE = 'live-max-ai-v1.12';
+const CACHE = 'live-max-ai-v3';
 const ASSETS = [
-  '/live-max-ai/',
-  '/live-max-ai/index.html',
-  '/live-max-ai/manifest.json',
-  '/live-max-ai/icons/icon-72x72.png',
-  '/live-max-ai/icons/icon-192x192.png',
-  '/live-max-ai/icons/icon-512x512.png'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icons/icon-72x72.png',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png'
 ];
 
 self.addEventListener('install', e => {
@@ -34,7 +34,7 @@ self.addEventListener('fetch', e => {
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return res;
-      }).catch(() => caches.match('/live-max-ai/index.html'));
+      }).catch(() => caches.match('/index.html'));
     })
   );
 });

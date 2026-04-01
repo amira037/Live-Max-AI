@@ -2,8 +2,8 @@
   "name": "LIVE MAX AI",
   "short_name": "MAX AI",
   "description": "실시간 라이브 믹스 AI 어드바이저",
-  "start_url": "/live-max-ai/",
-  "scope": "/live-max-ai/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#080a0e",
@@ -11,37 +11,37 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/live-max-ai/icons/icon-72x72.png",
+      "src": "/icons/icon-72x72.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/live-max-ai/icons/icon-72x72-maskable.png",
+      "src": "/icons/icon-72x72-maskable.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/live-max-ai/icons/icon-192x192.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/live-max-ai/icons/icon-192x192-maskable.png",
+      "src": "/icons/icon-192x192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/live-max-ai/icons/icon-512x512.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/live-max-ai/icons/icon-512x512-maskable.png",
+      "src": "/icons/icon-512x512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

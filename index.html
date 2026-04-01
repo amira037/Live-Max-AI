@@ -6,15 +6,15 @@
 <title>LIVE MAX AI</title>
 
 <!-- PWA -->
-<link rel="manifest" href="/live-max-ai/manifest.json">
+<link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#080a0e">
 
 <!-- iOS / iPadOS -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="LIVE MAX AI">
-<link rel="apple-touch-icon" href="/live-max-ai/icons/icon-192x192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="/live-max-ai/icons/icon-512x512.png">
+<link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png">
 
 <!-- Android Chrome -->
 <meta name="mobile-web-app-capable" content="yes">
@@ -2701,7 +2701,7 @@ _ctrlMQ.addEventListener('change', initControlsPanel);
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/live-max-ai/sw.js')
+    navigator.serviceWorker.register('/sw.js')
       .catch(e => console.log('[MaxAI] SW:', e));
   });
 }
