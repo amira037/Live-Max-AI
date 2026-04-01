@@ -275,6 +275,7 @@ canvas#meter {
   gap: 0;
   background: var(--surface);
   border-radius: var(--r);
+  flex-shrink: 0;
 }
 .controls-toggle-header {
   display: none;
@@ -336,6 +337,7 @@ input[type=range] {
   align-items: center;
   padding: clamp(10px,2vw,18px) 0 clamp(12px,2.5vw,20px);
   gap: clamp(6px,1vw,10px);
+  flex-shrink: 0;
 }
 
 .mic-btn {
@@ -851,12 +853,29 @@ input[type=range] {
   /* 그래프 풀스크린 */
   .graph-pane.fs-open {
     background: var(--bg) !important;
-    padding: calc(env(safe-area-inset-top) + 48px) clamp(12px,3vw,22px) calc(env(safe-area-inset-bottom) + 12px) !important;
+    padding: calc(env(safe-area-inset-top) + 48px) clamp(12px,3vw,22px) calc(env(safe-area-inset-bottom) + 16px) !important;
     overflow-y: auto;
     gap: clamp(8px,1.5vw,14px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+  /* 풀스크린 안 flex 자식들이 압축되지 않도록 */
+  .graph-pane.fs-open > * {
+    flex-shrink: 0;
   }
   .graph-pane.fs-open canvas#meter {
-    height: clamp(160px, 28vh, 300px) !important;
+    height: clamp(160px, 28vh, 280px) !important;
+  }
+  /* 풀스크린 캔버스 래퍼 높이 명시 (레이아웃 안정화) */
+  .graph-pane.fs-open .canvas-tap-wrap {
+    height: clamp(160px, 28vh, 280px);
+    flex-shrink: 0;
+  }
+  /* 그래프 풀스크린 시 마이크 버튼 숨김 */
+  .graph-pane.fs-open .mic-wrap {
+    display: none;
   }
 
   /* 조언창 풀스크린 */
@@ -880,6 +899,7 @@ input[type=range] {
     position: relative;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
   }
 
   /* 조언창 탭 영역 */
