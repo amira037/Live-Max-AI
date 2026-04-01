@@ -36,13 +36,26 @@ Follow these rules absolutely:
 - Be cautious when suggesting boosts in the harsh or sibilance zones
 - Suggest professional methods: fader level, compressor, low-cut, high-cut, EQ, low shelving EQ, high shelving EQ, reverb, etc.
 - Only advise on elements that are clearly audible in the provided audio
+- Prioritize advice in this order:
+  1. Balance between indivisual instruments
+  2. Balance between vocals and instrument groups
+  3. Individual channel EQ/tone
+  Never jump to vocal tone advice before checking overall balance first.
+
+- Internally score the mix from 1-10. 
+  Do not reveal the score.
+  If score is 8 or above, describe what sounds great 
+  instead of finding problems.
+  If score is below 8, give improvement advice as usual.
+
+- Do not include channel numbers in your response
 - Always respond in Korean
 `.trim();
 
 const MODE_PROMPTS = {
   music:  "",
   speech: "Speech intelligibility is the absolute priority.",
-  mixed:  "Music and vocals should blend harmoniously, with the lead speaker's voice slightly more prominent than other vocalists.",
+  mixed:  "Music and vocals should blend harmoniously.",
 };
 
 // ── 한글 키 → 숫자 인덱스 매핑 (HTML의 seg-btn 텍스트와 정확히 일치) ──
@@ -61,9 +74,9 @@ const MIX_PROMPTS = {
   },
 
   vocalWeight: {
-    '밴드중심':  "Prioritize overall band energy and balance. Vocals should sit slightly back in the mix.",
-    '균형':      "Vocals and instruments should be evenly balanced and well-audible.",
-    '보컬중심':  "Vocals must always be the most prominent element. Prioritize vocal presence over all other instruments.",
+    '밴드중심':  "Focus on band energy, Vocals should be buried behind the instruments, creating an alternative rock-style sound where vocals feel distant and dreamy.",
+    '균형':     "Prioritize overall band energy and balance. Vocals should sit slightly back in the mix.",
+    '보컬중심':  "Vocals and instruments should be evenly balanced and well-audible.",
   },
 
   bassFeeling: {
@@ -107,12 +120,22 @@ function buildMixPrompt(mixPref) {
 
   // 음악 / 혼합 모드
   if (mode === 'music' || mode === 'mixed') {
-    const vt = MIX_PROMPTS.vocalTone[mixPref.vocalTone];
-    const vw = MIX_PROMPTS.vocalWeight[mixPref.vocalWeight];
-    const bf = MIX_PROMPTS.bassFeeling[mixPref.lowFeel];      // HTML 키: lowFeel
+    const vocal = mixPref.vocal || 'yes'; // 'none' | 'yes' | 'leader'
+
+    if (vocal === 'none') {
+      lines.push('Vocal: No vocals in this mix. Do not give any vocal-related advice.');
+    } else {
+      if (vocal === 'leader') {
+        lines.push('Vocal: There is a lead speaker whose voice must always be slightly more prominent than other vocalists.');
+      }
+      const vt = MIX_PROMPTS.vocalTone[mixPref.vocalTone];
+      const vw = MIX_PROMPTS.vocalWeight[mixPref.vocalWeight];
+      if (vt) lines.push(`Vocal tone: ${vt}`);
+      if (vw) lines.push(`Vocal weight: ${vw}`);
+    }
+
+    const bf = MIX_PROMPTS.bassFeeling[mixPref.lowFeel];
     const dp = MIX_PROMPTS.drumPunch[mixPref.drumPunch];
-    if (vt) lines.push(`Vocal tone: ${vt}`);
-    if (vw) lines.push(`Vocal weight: ${vw}`);
     if (bf) lines.push(`Low end: ${bf}`);
     if (dp) lines.push(`Drums: ${dp}`);
   }
@@ -1126,6 +1149,16 @@ input[type=range] {
       <div class="setting-section">
         <div class="acc-title" onclick="toggleAcc(this)"><span>공간 환경</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
+          <!-- 공간 유형 -->
+          <div class="seg-row">
+            <div class="seg-label">공간 유형</div>
+            <div class="seg-group" id="seg-space-mode">
+              <button class="seg-btn" onclick="setSpaceMode('live',this)">라이브 PA</button>
+              <button class="seg-btn" onclick="setSpaceMode('studio',this)">스튜디오</button>
+            </div>
+          </div>
+          <!-- 라이브 PA 전용 슬라이더 -->
+          <div id="space-live-fields">
           <div class="seg-row">
             <div class="seg-label">공간 크기</div>
             <div class="seg-group" id="seg-venue">
@@ -1169,6 +1202,7 @@ input[type=range] {
           <textarea class="memo-input" id="space-memo" placeholder="공간 관련 고정 메모..." oninput="saveSpaceMemoLive()"></textarea>
           <div class="preset-list" id="space-preset-list"></div>
           <button class="btn btn-secondary" style="width:100%" onclick="saveSpacePreset()">현재 공간 환경을 프리셋으로 저장</button>
+          </div><!-- /space-live-fields -->
         </div>
       </div>
 
@@ -1185,6 +1219,14 @@ input[type=range] {
             </div>
             <div id="mix-mixed-hint" class="ch-hint" style="display:none">음악·스피치 취향을 모두 분석에 반영해요. </div>
           </div>
+          <div class="seg-row" id="vocal-config-row">
+            <div class="seg-label">보컬 구성</div>
+            <div class="seg-group" id="seg-vocal-config">
+              <button class="seg-btn" onclick="setVocalConfig('none',this)">없음</button>
+              <button class="seg-btn" onclick="setVocalConfig('yes',this)">있음</button>
+              <button class="seg-btn" onclick="setVocalConfig('leader',this)">보컬+리더</button>
+            </div>
+          </div>
           <div class="seg-row" id="density-row">
             <div class="seg-label">사운드 밀도</div>
             <div class="seg-group" id="seg-density">
@@ -1194,22 +1236,24 @@ input[type=range] {
             </div>
           </div>
           <div id="mix-music-fields">
-            <div class="seg-row">
-              <div class="seg-label">보컬 톤</div>
-              <div class="seg-group" id="seg-vocal-tone">
-                <button class="seg-btn" onclick="setMixPref('vocalTone','부드럽게',this)">부드럽게</button>
-                <button class="seg-btn" onclick="setMixPref('vocalTone','중립',this)">중립</button>
-                <button class="seg-btn" onclick="setMixPref('vocalTone','명료하게',this)">명료하게</button>
+            <div id="mix-vocal-fields">
+              <div class="seg-row">
+                <div class="seg-label">보컬 톤</div>
+                <div class="seg-group" id="seg-vocal-tone">
+                  <button class="seg-btn" onclick="setMixPref('vocalTone','부드럽게',this)">부드럽게</button>
+                  <button class="seg-btn" onclick="setMixPref('vocalTone','중립',this)">중립</button>
+                  <button class="seg-btn" onclick="setMixPref('vocalTone','명료하게',this)">명료하게</button>
+                </div>
               </div>
-            </div>
-            <div class="seg-row">
-              <div class="seg-label">보컬 비중</div>
-              <div class="seg-group" id="seg-vocal-weight">
-                <button class="seg-btn" onclick="setMixPref('vocalWeight','밴드중심',this)">밴드중심</button>
-                <button class="seg-btn" onclick="setMixPref('vocalWeight','균형',this)">균형</button>
-                <button class="seg-btn" onclick="setMixPref('vocalWeight','보컬중심',this)">보컬중심</button>
+              <div class="seg-row">
+                <div class="seg-label">보컬 비중</div>
+                <div class="seg-group" id="seg-vocal-weight">
+                  <button class="seg-btn" onclick="setMixPref('vocalWeight','밴드중심',this)">밴드중심</button>
+                  <button class="seg-btn" onclick="setMixPref('vocalWeight','균형',this)">균형</button>
+                  <button class="seg-btn" onclick="setMixPref('vocalWeight','보컬중심',this)">보컬중심</button>
+                </div>
               </div>
-            </div>
+            </div><!-- /mix-vocal-fields -->
             <div class="seg-row">
               <div class="seg-label">저역 느낌</div>
               <div class="seg-group" id="seg-low-feel">
@@ -1328,9 +1372,9 @@ const state = {
   channels: [],
   presets: [],
   activePreset: null,
-  spaceEnv: { venue:'', reverb:'', sub:'', delay:'', fb:'', memo:'' },
+  spaceEnv: { mode:'live', venue:'', reverb:'', sub:'', delay:'', fb:'', memo:'' },
   spacePresets: [],
-  mixPref: { type:'music', density:'중립', vocalTone:'중립', vocalWeight:'균형', lowFeel:'중립', drumPunch:'중립', clarity:'중립' },
+  mixPref: { type:'music', vocal:'yes', density:'중립', vocalTone:'중립', vocalWeight:'균형', lowFeel:'중립', drumPunch:'중립', clarity:'중립' },
   micStream: null,
   audioCtx: null,
   analyser: null,
@@ -1943,16 +1987,21 @@ async function analyzeWithGemini(audioBlob, num) {
 
     // 2. 공간 환경 + 공간 메모
     const env = state.spaceEnv;
-    const envParts = [];
-    if (env.venue)  envParts.push(`공간크기=${env.venue}`);
-    if (env.reverb) envParts.push(`반사음=${env.reverb}`);
-    if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
-    if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
-    if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
-    const spaceSection = [
-      envParts.length ? '공간 환경: ' + envParts.join(', ') : '',
-      env.memo ? '공간 메모: ' + env.memo : '',
-    ].filter(Boolean).join('\n');
+    let spaceSection = '';
+    if ((env.mode || 'live') === 'studio') {
+      spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통';
+    } else {
+      const envParts = [];
+      if (env.venue)  envParts.push(`공간크기=${env.venue}`);
+      if (env.reverb) envParts.push(`반사음=${env.reverb}`);
+      if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
+      if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
+      if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
+      spaceSection = [
+        envParts.length ? '공간 환경: ' + envParts.join(', ') : '',
+        env.memo ? '공간 메모: ' + env.memo : '',
+      ].filter(Boolean).join('\n');
+    }
 
     // 3. 채널 구성
     const channelInfo = state.channels.length
@@ -1974,8 +2023,6 @@ async function analyzeWithGemini(audioBlob, num) {
 
 규칙:
 - 조용하거나 음악이 없으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
-- 음악이 있으면 아래 우선순위로 가장 중요한 문제 1-3가지만 골라 조언:
-  1. 채널 간 밸런스  2. 채널 EQ/컴프  3. 채널 리버브/이펙트  4. 하울링  5. 전체 밸런스
 - 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")
 - 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")
 - 전체 3~4줄 이내, 간결하게
@@ -2313,6 +2360,15 @@ function saveSpaceMemoLive() {
   flushSpaceMemo();
   localStorage.setItem('space_env', JSON.stringify(state.spaceEnv));
 }
+function setSpaceMode(mode, btn) {
+  state.spaceEnv.mode = mode;
+  const group = btn.closest('.seg-group');
+  group.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const liveFields = document.getElementById('space-live-fields');
+  if (liveFields) liveFields.style.display = mode === 'studio' ? 'none' : '';
+  localStorage.setItem('space_env', JSON.stringify(state.spaceEnv));
+}
 function setSpaceEnv(key, val, btn) {
   state.spaceEnv[key] = val;
   const group = btn.closest('.seg-group');
@@ -2323,6 +2379,17 @@ function setSpaceEnv(key, val, btn) {
 }
 function renderSpaceEnv() {
   const env = state.spaceEnv;
+  // 공간 유형
+  const modeGroup = document.getElementById('seg-space-mode');
+  if (modeGroup) {
+    const currentMode = env.mode || 'live';
+    modeGroup.querySelectorAll('.seg-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent === (currentMode === 'studio' ? '스튜디오' : '라이브 PA'));
+    });
+    const liveFields = document.getElementById('space-live-fields');
+    if (liveFields) liveFields.style.display = currentMode === 'studio' ? 'none' : '';
+  }
+  // 슬라이더들
   const segMap = { venue:'seg-venue', reverb:'seg-reverb', sub:'seg-sub', delay:'seg-delay', fb:'seg-fb' };
   Object.entries(segMap).forEach(([key, groupId]) => {
     const g = document.getElementById(groupId);
@@ -2381,6 +2448,14 @@ function setMixPref(key, val, btn) {
   btn.classList.add('active');
   localStorage.setItem('mix_pref', JSON.stringify(state.mixPref));
 }
+function setVocalConfig(val, btn) {
+  state.mixPref.vocal = val;
+  const g = document.getElementById('seg-vocal-config');
+  if (g) g.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+  localStorage.setItem('mix_pref', JSON.stringify(state.mixPref));
+  const vf = document.getElementById('mix-vocal-fields');
+  if (vf) vf.style.display = val === 'none' ? 'none' : 'block';
+}
 function renderMixPref() {
   const p = state.mixPref;
   const typeGroup = document.getElementById('seg-mix-type');
@@ -2394,10 +2469,19 @@ function renderMixPref() {
   const speechFields = document.getElementById('mix-speech-fields');
   const mixedHint = document.getElementById('mix-mixed-hint');
   const densityRow = document.getElementById('density-row');
+  const vocalConfigRow = document.getElementById('vocal-config-row');
+  const vocalFields = document.getElementById('mix-vocal-fields');
+  const showMusic = p.type === 'music' || p.type === 'mixed';
   if (densityRow) densityRow.style.display = p.type === 'mixed' ? 'none' : 'flex';
   if (musicFields) musicFields.style.display = p.type === 'music' ? 'block' : 'none';
   if (speechFields) speechFields.style.display = p.type === 'speech' ? 'flex' : 'none';
   if (mixedHint) mixedHint.style.display = p.type === 'mixed' ? 'block' : 'none';
+  if (vocalConfigRow) vocalConfigRow.style.display = showMusic ? 'flex' : 'none';
+  const vocal = p.vocal || 'yes';
+  if (vocalFields) vocalFields.style.display = (showMusic && vocal !== 'none') ? 'block' : 'none';
+  const vocalTextMap = { none:'없음', yes:'있음', leader:'보컬+리더' };
+  const vcg = document.getElementById('seg-vocal-config');
+  if (vcg) vcg.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === vocalTextMap[vocal]));
   const prefMap = {
     density:'seg-density', vocalTone:'seg-vocal-tone', vocalWeight:'seg-vocal-weight',
     lowFeel:'seg-low-feel', drumPunch:'seg-drum-punch', clarity:'seg-clarity',
@@ -2417,14 +2501,18 @@ function buildAIContext() {
   const parts = [];
 
   // 공간 환경
-  const envParts = [];
-  if (env.venue)  envParts.push(`공간크기=${env.venue}`);
-  if (env.reverb) envParts.push(`반사음=${env.reverb}`);
-  if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
-  if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
-  if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
-  if (envParts.length) parts.push('공간 환경: ' + envParts.join(', '));
-  if (env.memo)   parts.push('공간 메모: ' + env.memo);
+  if ((env.mode || 'live') === 'studio') {
+    parts.push('공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통');
+  } else {
+    const envParts = [];
+    if (env.venue)  envParts.push(`공간크기=${env.venue}`);
+    if (env.reverb) envParts.push(`반사음=${env.reverb}`);
+    if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
+    if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
+    if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
+    if (envParts.length) parts.push('공간 환경: ' + envParts.join(', '));
+    if (env.memo)   parts.push('공간 메모: ' + env.memo);
+  }
 
   // 믹스 취향 — prompts.js의 buildMixPrompt 호출
   const mixPrompt = buildMixPrompt(p);
