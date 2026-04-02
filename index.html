@@ -42,8 +42,8 @@ Follow these rules absolutely:
 1. Silently identify all prominent instruments and vocals detected in the audio.
 2. Determine whether the performance is a "Solo/Isolated Track" or a "Group/Full Band Mix."
 3. Internally score the mix from 1 to 10.
-   - If the score is 8.5 or above: Focus on describing what sounds great instead of finding problems.
-   - If the score is below 8.5: Provide improvement advice as prioritized below.
+   - If the score is 8 or above: Focus on describing what sounds great instead of finding problems.
+   - If the score is below 8: Provide improvement advice as prioritized below.
 4. Use these findings as the foundation for your advice, but DO NOT list the instruments, state the performance type, or reveal the score in your final response.
 
 [STRICT CONSTRAINTS]
@@ -87,8 +87,8 @@ const MIX_PROMPTS = {
 
   vocalTone: {
     '부드럽게':  "Vocals should sound warm, smooth, and full in the low-mids. Suppress the harsh zone and sibilance zone to the maximum.",
-    '중립':      "Gently suppress the harsh zone and sibilance zone for a smooth vocal tone.",
-    '명료하게':  "Prioritize vocal clarity and definition. Avoid excessive boost that causes listener fatigue.",
+    '중립':     "Gently suppress sibilance zone for a smooth vocal tone.",
+    '명료하게':  "Prioritize Vocal clarity and openness, Avoid excessive boost that causes listener fatigue.",
   },
 
   vocalWeight: {
@@ -2214,6 +2214,15 @@ async function analyzeWithGemini(audioBlob, num) {
     if (!state.soloMode) {
       if ((env.mode || 'live') === 'studio') {
         spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통';
+         mixSection = mixSection
+          .replace(
+          'You are a live PA sound engineer advisor.',
+          'You are a professional studio recording engineer.'
+          )
+          .replace(
+          '- Never advise based on hi-fi or studio mixing standards',
+          '- Advise based on studio mixing and mastering standards.'
+          );
       } else {
         const envParts = [];
         if (env.venue)  envParts.push(`공간크기=${env.venue}`);
