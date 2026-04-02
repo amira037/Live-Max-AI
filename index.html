@@ -2615,10 +2615,26 @@ const TUTORIAL_STEPS = [
   },
   {
     target: null,
+    text: _tutInstallText(),
+    settings: false,
+  },
+  {
+    target: null,
     text: '준비 완료예요! 즐거운 믹싱 되세요 🎉',
     settings: false,
   },
 ];
+
+function _tutInstallText() {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) {
+    return '앱 형태로 설치하면 더 편리하게 사용할 수 있어요 📲<br>Chrome 메뉴에서 <b>\'앱 설치\'</b>를 눌러주세요!';
+  }
+  if (/iphone|ipad|ipod/i.test(ua)) {
+    return '앱 형태로 설치하면 더 편리하게 사용할 수 있어요 📲<br>Safari 공유 버튼에서 <b>\'홈 화면에 추가\'</b>를 눌러주세요!';
+  }
+  return '앱 형태로 설치하면 더 편리하게 사용할 수 있어요 💻<br>Chrome 주소창 오른쪽 <b>설치 아이콘</b>을 눌러주세요!';
+}
 
 let _tutStep = 0;
 
