@@ -446,6 +446,16 @@ input[type=range] {
   gap: clamp(10px,2vw,18px);
 }
 
+.advice-notice {
+  flex-shrink: 0;
+  padding: clamp(6px,1vw,8px) clamp(12px,2.5vw,20px);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--xs);
+  color: var(--muted);
+}
+
 /* ── CARDS ── */
 .card-group { display:flex; flex-direction:column; gap:clamp(5px,0.8vw,8px); }
 
@@ -1251,6 +1261,7 @@ input[type=range] {
         </div>
         <div id="analysis-list"></div>
       </div>
+      <div class="advice-notice">⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다</div>
     </div>
 
   </div>
