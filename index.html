@@ -858,6 +858,29 @@ input[type=range] {
 }
 #tutorial-next-btn:hover { background: var(--accent-d); }
 
+@media (max-width: 767px) {
+  #tutorial-bubble {
+    padding: 20px 22px !important;
+    gap: 18px !important;
+    max-width: min(92vw, 400px) !important;
+  }
+  #tutorial-text {
+    font-size: clamp(16px, 4.5vw, 19px) !important;
+    line-height: 1.7 !important;
+  }
+  #tutorial-step-indicator {
+    font-size: 15px !important;
+  }
+  #tutorial-skip-btn {
+    font-size: 15px !important;
+    padding: 6px 10px !important;
+  }
+  #tutorial-next-btn {
+    font-size: 17px !important;
+    padding: 13px 28px !important;
+  }
+}
+
 /* ── 모바일: 헤더 패딩 타이트하게 ── */
 @media (max-width: 768px) {
   header {
@@ -2681,10 +2704,10 @@ function _tutRender(idx) {
       });
       const body = sec.querySelector('.acc-body');
       const arrow = sec.querySelector('.acc-arrow');
-      if (body) { body.classList.add('open'); }
-      if (arrow) { arrow.textContent = '▼'; }
-      // Scroll section into view inside settings panel
-      setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+      if (body) body.classList.add('open');
+      if (arrow) arrow.textContent = '▼';
+      // Scroll instantly so position is stable before measurement
+      sec.scrollIntoView({ behavior: 'instant', block: 'start' });
     }
   }
 
@@ -2693,7 +2716,8 @@ function _tutRender(idx) {
   document.getElementById('tutorial-next-btn').textContent = isLast ? '시작하기 🎉' : '다음 →';
   document.getElementById('tutorial-skip-btn').style.display = isLast ? 'none' : 'inline-block';
 
-  requestAnimationFrame(() => _tutPosition(step));
+  // Wait for accordion CSS transition (350ms) to finish before measuring rect
+  setTimeout(() => _tutPosition(step), step.openSection ? 420 : 50);
 }
 
 function _tutPosition(step) {
@@ -2709,10 +2733,9 @@ function _tutPosition(step) {
   }
 
   if (els.length === 0) {
-    // Centered — no spotlight
     hlBox.style.display = 'none';
     bubble.removeAttribute('data-arrow');
-    bubble.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%);transition:none;';
+    bubble.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%);';
     return;
   }
 
@@ -2726,43 +2749,60 @@ function _tutPosition(step) {
     y2 = Math.max(y2, r.bottom);
   });
 
-  hlBox.style.display = 'block';
-  hlBox.style.left   = (x1 - PAD) + 'px';
-  hlBox.style.top    = (y1 - PAD) + 'px';
-  hlBox.style.width  = (x2 - x1 + PAD * 2) + 'px';
-  hlBox.style.height = (y2 - y1 + PAD * 2) + 'px';
-
   const vpW = window.innerWidth;
   const vpH = window.innerHeight;
-  const GAP = 14;
-  const BW  = Math.min(360, vpW * 0.88);
 
-  let bl = (x1 + x2) / 2 - BW / 2;
+  // Clamp element rect to viewport
+  const cy1 = Math.max(0, y1);
+  const cy2 = Math.min(vpH, y2);
+  const cx1 = Math.max(0, x1);
+  const cx2 = Math.min(vpW, x2);
+
+  hlBox.style.display = 'block';
+  hlBox.style.left   = (cx1 - PAD) + 'px';
+  hlBox.style.top    = (cy1 - PAD) + 'px';
+  hlBox.style.width  = (cx2 - cx1 + PAD * 2) + 'px';
+  hlBox.style.height = (cy2 - cy1 + PAD * 2) + 'px';
+
+  const GAP = 12;
+  const BW  = Math.min(360, vpW * 0.88);
+  let bl = (cx1 + cx2) / 2 - BW / 2;
   bl = Math.max(10, Math.min(vpW - BW - 10, bl));
 
-  const spaceBelow = vpH - y2 - PAD;
-  const spaceAbove = y1 - PAD;
-  let arrowDir, bt, bb;
+  const spaceBelow = vpH - cy2 - PAD;
+  const spaceAbove = cy1 - PAD;
+  const sectionH   = cy2 - cy1;
 
-  if (spaceBelow >= 130 || spaceBelow >= spaceAbove) {
+  // Tall section (>38% of viewport) or no room below → pin bubble at bottom
+  if (sectionH > vpH * 0.38 || spaceBelow < 110) {
+    bubble.style.transform = '';
+    bubble.style.maxWidth  = BW + 'px';
+    bubble.style.left      = bl + 'px';
+    bubble.style.bottom    = '18px';
+    bubble.style.top       = '';
+    bubble.removeAttribute('data-arrow');
+    return;
+  }
+
+  let arrowDir, bt, bb;
+  if (spaceBelow >= 110 || spaceBelow >= spaceAbove) {
     arrowDir = 'top';
-    bt = y2 + PAD + GAP;
+    bt = cy2 + PAD + GAP;
     bb = '';
   } else {
     arrowDir = 'bottom';
     bt = '';
-    bb = vpH - (y1 - PAD - GAP);
+    bb = vpH - (cy1 - PAD - GAP);
   }
 
-  // Arrow horizontal offset relative to bubble left
-  let ax = (x1 + x2) / 2 - bl;
+  let ax = (cx1 + cx2) / 2 - bl;
   ax = Math.max(20, Math.min(BW - 20, ax));
 
   bubble.style.transform = '';
-  bubble.style.maxWidth = BW + 'px';
-  bubble.style.left   = bl + 'px';
-  bubble.style.top    = bt !== '' ? bt + 'px' : '';
-  bubble.style.bottom = bb !== '' ? bb + 'px' : '';
+  bubble.style.maxWidth  = BW + 'px';
+  bubble.style.left      = bl + 'px';
+  bubble.style.top       = bt !== '' ? bt + 'px' : '';
+  bubble.style.bottom    = bb !== '' ? bb + 'px' : '';
   bubble.setAttribute('data-arrow', arrowDir);
   bubble.style.setProperty('--arrow-x', ax + 'px');
 }
