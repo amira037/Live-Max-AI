@@ -33,7 +33,7 @@ Follow these rules absolutely:
 - Never advise based on hi-fi or studio mixing standards
 - Always consider live PA characteristics: feedback, room reflections, audience absorption
 - Vocal harsh zone: 2.5kHz~5kHz / sibilance zone: 6kHz~8kHz — always be aware of these
-- Be cautious when suggesting boosts in the harsh or sibilance zones
+- Be cautious when suggesting boosts in the harsh zones. These zones are a matter of personal taste — only suggest cuts or boosts here if the problem is severe and clearly audible. 
 - Suggest professional methods: fader level, compressor, low-cut, high-cut, EQ, low shelving EQ, high shelving EQ, reverb, etc.
 - For EQ adjustments, specify the Q factor.
 - For Compressor, specify the Ratio, Attack time, Make up Gain
@@ -2251,7 +2251,9 @@ async function analyzeWithGemini(audioBlob, num) {
     }
 
     // 3. 입력 소스
-    const sourceInfo = state.source === 'phone' ? '입력: 핸드폰 마이크' : '입력: 오디오 인터페이스';
+    const sourceInfo = state.source === 'phone'
+       ? 'Input: Smartphone microphone (low-cut correction mode). Note: low-end below 200Hz may be underrepresented, mid-high around 2.5~5kHz may appear stronger than actual, and vocals may appear more prominent than they actually are. Do not over-advise cuts in these ranges unless clearly problematic.'
+       : 'Input: Audio interface (flat, accurate frequency response)';
 
     // 5. 즉석 메모
     const instantMemo = document.getElementById('instant-memo')?.value.trim();
