@@ -35,21 +35,39 @@ Follow these rules absolutely:
 - Vocal harsh zone: 2.5kHz~5kHz / sibilance zone: 6kHz~8kHz — always be aware of these
 - Be cautious when suggesting boosts in the harsh or sibilance zones
 - Suggest professional methods: fader level, compressor, low-cut, high-cut, EQ, low shelving EQ, high shelving EQ, reverb, etc.
-- Only advise on elements that are clearly audible in the provided audio
-- Prioritize advice in this order:
-  1. Balance between indivisual instruments
-  2. Balance between vocals and instrument groups
-  3. Individual channel EQ/tone
-  Never jump to vocal tone advice before checking overall balance first.
+- For EQ adjustments, specify the Q factor.
+- For Compressor, specify the Ratio, Attack time, Make up Gain
 
-- Internally score the mix from 1-10. 
-  Do not reveal the score.
-  If score is 8 or above, describe what sounds great 
-  instead of finding problems.
-  If score is below 8, give improvement advice as usual.
+[INTERNAL ANALYSIS PROTOCOL - DO NOT OUTPUT]
+1. Silently identify all prominent instruments and vocals detected in the audio.
+2. Determine whether the performance is a "Solo/Isolated Track" or a "Group/Full Band Mix."
+3. Internally score the mix from 1 to 10.
+   - If the score is 8.5 or above: Focus on describing what sounds great instead of finding problems.
+   - If the score is below 8.5: Provide improvement advice as prioritized below.
+4. Use these findings as the foundation for your advice, but DO NOT list the instruments, state the performance type, or reveal the score in your final response.
 
-- Do not include channel numbers in your response
-- Always respond in Korean
+[STRICT CONSTRAINTS]
+- DO NOT include channel numbers in your response.
+- DO NOT discuss "hypothetical" instruments. If a source is NOT detected in the CURRENT 5-second clip, it must be ignored entirely, even if mentioned in other prompts.
+- If no instruments are detected, state: "명확한 오디오 신호가 감지되지 않았습니다. 더 깨끗한 신호를 입력해주세요."
+
+[ANALYSIS HIERARCHY & PRIORITIZATION]
+- Scenario A: Multiple Instruments and Vocals Detected (Full Band Mix)
+  1. Intra-Band Balance: Focus on the volume and frequency balance between individual instruments.
+  2. Suggest fader level adjustments (e.g. "+2dB", "-1.5dB") when balance is the issue.
+  3. Group Balance: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.'
+  4. Individual Channel Precision: Provide specific EQ and tonal adjustments to resolve masking.
+  *Never jump to vocal tone advice before checking overall balance first.
+
+- Scenario B: Single Instrument or Single Vocal Detected (Solo/Isolated Track)
+  1. Tonal Correction (EQ): Adjust the fundamental tone and remove problematic frequencies.
+  2. Dynamic & Spatial Processing: Suggest optimal settings for Compressor, Gate, and Reverb.
+
+[OUTPUT INSTRUCTION]
+- Start your response immediately with the prioritized advice.
+- Focus purely on actionable mixing solutions.
+- Always specify the instrument name when giving advice about a specific source.
+- ALWAYS RESPOND IN KOREAN.
 `.trim();
 
 const MODE_PROMPTS = {
@@ -997,8 +1015,6 @@ input[type=range] {
         <span>10k</span><span>20k</span>
       </div>
 
-      <div id="rt-line" style="font-family:var(--font-body);font-size:var(--sm);color:var(--accent);padding:4px 2px;min-height:1.4em;opacity:0.85;transition:opacity 0.3s;"></div>
-
       <!-- Controls -->
       <div class="controls-row">
         <div class="controls-toggle-header" id="controls-toggle-header" onclick="toggleControlsPanel()">
@@ -1040,24 +1056,34 @@ input[type=range] {
           <button class="ctrl-rst" onclick="document.getElementById('lsf-slider').value=0;setLowshelf(0);">RST</button>
         </div>
         <div class="ctrl-divider"></div>
-        <!-- Realtime toggle -->
+        <!-- DRY / WET toggle -->
         <div class="ctrl-row">
-          <span class="ctrl-label" style="color:var(--muted2)">실시간</span>
-          <span class="ctrl-rt-label">JS 분석 조언</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="rt-toggle" onchange="toggleRealtime(this.checked)">
-            <div class="toggle-track"></div>
-            <div class="toggle-knob"></div>
-          </label>
+          <span class="ctrl-label" style="color:var(--muted2)">REC</span>
+          <span class="ctrl-rt-label">녹음 방식</span>
+          <div id="dry-wet-toggle" onclick="toggleDryWet()" style="display:flex;align-items:center;cursor:pointer;border-radius:99px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;">
+            <span id="dry-btn" style="padding:3px 8px;font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;">DRY</span>
+            <span id="wet-btn" style="padding:3px 8px;font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;">WET</span>
+          </div>
         </div>
         </div><!-- /controls-collapsible -->
       </div>
 
       <!-- Mic button -->
       <div class="mic-wrap">
-        <div class="mic-btn" id="mic-btn" onclick="handleMic()">
-          <span class="mic-icon">🎙</span>
-          <span class="mic-label" id="mic-label">MAX AI</span>
+        <div style="display:flex;align-items:center;gap:clamp(10px,2vw,18px);">
+          <input id="user-hint-input" type="text" maxlength="20" placeholder="무엇을 조언할까요?"
+            oninput="state.userHint=this.value.trim()"
+            onkeydown="if(event.key==='Enter'){this.blur();handleMic();}"
+            style="width:clamp(90px,18vw,160px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:clamp(4px,0.8vw,7px) clamp(8px,1.2vw,12px);font-family:var(--font-mono);font-size:var(--xs);color:var(--fg1);outline:none;flex-shrink:0;"
+          />
+          <div id="solo-mix-toggle" onclick="toggleSoloMix()" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;border-radius:99px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;">
+            <span id="solo-btn" style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,16px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;width:100%;text-align:center;">SOLO</span>
+            <span id="mix-btn" style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,16px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;width:100%;text-align:center;">MIX</span>
+          </div>
+          <div class="mic-btn" id="mic-btn" onclick="handleMic()">
+            <span class="mic-icon">🎙</span>
+            <span class="mic-label" id="mic-label">MAX AI</span>
+          </div>
         </div>
         <div class="countdown" id="countdown"></div>
       </div>
@@ -1136,15 +1162,6 @@ input[type=range] {
         </div>
       </div>
 
-      <!-- ▶ API Key -->
-      <div class="setting-section">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>API Key</span><span class="acc-arrow">▶</span></div>
-        <div class="acc-body">
-          <input class="api-input" type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
-          <button class="btn btn-primary" onclick="saveSettings()">저장</button>
-        </div>
-      </div>
-
       <!-- ▶ 공간 환경 -->
       <div class="setting-section">
         <div class="acc-title" onclick="toggleAcc(this)"><span>공간 환경</span><span class="acc-arrow">▶</span></div>
@@ -1200,7 +1217,13 @@ input[type=range] {
             </div>
           </div>
           <textarea class="memo-input" id="space-memo" placeholder="공간 관련 고정 메모..." oninput="saveSpaceMemoLive()"></textarea>
-          <div class="preset-list" id="space-preset-list"></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="space-preset-select" onchange="loadSpacePreset(this.value)"
+              style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:calc(var(--r)*0.8);padding:clamp(8px,1.4vw,12px) clamp(10px,1.6vw,14px);color:var(--text);font-family:var(--font-mono);font-size:var(--sm);outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;">
+              <option value="">— 프리셋 선택 —</option>
+            </select>
+            <button class="btn btn-secondary" style="color:var(--danger);border-color:rgba(255,68,68,0.3);flex-shrink:0" onclick="deleteSpacePreset()">삭제</button>
+          </div>
           <button class="btn btn-secondary" style="width:100%" onclick="saveSpacePreset()">현재 공간 환경을 프리셋으로 저장</button>
           </div><!-- /space-live-fields -->
         </div>
@@ -1366,9 +1389,9 @@ input[type=range] {
 <script>
 // ── STATE ──
 const state = {
-  realtimeOn: false,
+  soloMode: false,
+  wetMode: false,
   source: 'phone',
-  apiKey: '',
   channels: [],
   presets: [],
   activePreset: null,
@@ -1396,6 +1419,7 @@ const state = {
   devices: [],
   wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
+  userHint: '',
 };
 
 const PHONE_CORRECTION = [8,8,7,6,5,4,3,2,1,0,0,-1,-1,-1,-2,-2,-2,-2,-3,-3,-3,-3,-4,-4,-4,-4,-4,-5,-5,-5,-5,-5];
@@ -1406,11 +1430,9 @@ const HOWL_SUSTAIN_FRAMES = 60;
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('livemaxai') || '{}');
-    if (s.apiKey)    state.apiKey    = s.apiKey;
     if (s.channels)  state.channels  = s.channels;
     if (s.presets)   state.presets   = s.presets;
     if (s.source)    state.source    = s.source;
-    if (s.realtimeOn !== undefined) state.realtimeOn = s.realtimeOn;
     if (s.deviceId)  state.deviceId  = s.deviceId;
     if (s.model)     state.model     = s.model;
     const se = JSON.parse(localStorage.getItem('space_env') || 'null');
@@ -1423,8 +1445,8 @@ function loadSettings() {
 }
 function saveToStorage() {
   localStorage.setItem('livemaxai', JSON.stringify({
-    apiKey: state.apiKey, channels: state.channels, presets: state.presets,
-    source: state.source, realtimeOn: state.realtimeOn, deviceId: state.deviceId,
+    channels: state.channels, presets: state.presets,
+    source: state.source, deviceId: state.deviceId,
     model: state.model,
   }));
 }
@@ -1576,17 +1598,37 @@ async function changeDevice(deviceId) {
 }
 
 // ── AGC ──
+const AGC_ATTACK     = 0.12;
+const AGC_RELEASE    = 0.04;
+const AGC_DEADZONE   = 0.02;
+const AGC_BUF_FRAMES = 60;   // 60fps 기준 약 1초
+const AGC_INTERVAL   = 500; // 게인 적용 간격 (ms)
+
+let agcBuffer  = [];
 let lastAGCTime = 0;
+
 function updateAGC(rawVals) {
   if (!state.agcOn) { updateAGCDisplay(); return; }
+
+  // RMS 계산 후 슬라이딩 윈도우 버퍼에 누적
+  const rms = Math.sqrt(rawVals.reduce((s, v) => s + v * v, 0) / rawVals.length);
+  agcBuffer.push(rms);
+  if (agcBuffer.length > AGC_BUF_FRAMES) agcBuffer.shift();
+
+  // 게인 적용은 INTERVAL 간격으로만
   const now = Date.now();
-  if (now - lastAGCTime < 3000) { updateAGCDisplay(); return; }
+  if (now - lastAGCTime < AGC_INTERVAL) { updateAGCDisplay(); return; }
   lastAGCTime = now;
-  const sorted = [...rawVals].sort((a,b) => b - a);
-  const peak = sorted[Math.floor(sorted.length * 0.15)] || 0;
-  if (peak < 0.08) return;
-  const desired = Math.min(Math.max(0.70 / peak, 0.5), 4.0);
-  state.agcGain += (desired - state.agcGain) * 0.01;
+
+  const avgRms = agcBuffer.reduce((s, v) => s + v, 0) / agcBuffer.length;
+  if (avgRms < 0.06) { updateAGCDisplay(); return; }
+
+  const desired = Math.min(Math.max(0.57/ avgRms, 0.5), 4.0);
+  const diff = desired - state.agcGain;
+
+  if (Math.abs(diff) < AGC_DEADZONE) { updateAGCDisplay(); return; }
+
+  state.agcGain += diff * (diff < 0 ? AGC_ATTACK : AGC_RELEASE);
   updateAGCDisplay();
 }
 function updateAGCDisplay() {
@@ -1638,8 +1680,36 @@ function setComp(val) {
   if (v <= 0.01) { state.compressor.threshold.value = 0; state.compressor.ratio.value = 1; }
   else { state.compressor.threshold.value = -(12 + v * 38); state.compressor.ratio.value = 2 + v * 18; }
 }
-function toggleRealtime(on) {
-  state.realtimeOn = on;
+// ── DRY / WET ──
+function toggleDryWet() {
+  state.wetMode = !state.wetMode;
+  updateDryWetUI();
+}
+function updateDryWetUI() {
+  const dry = document.getElementById('dry-btn');
+  const wet = document.getElementById('wet-btn');
+  if (!dry || !wet) return;
+  const w = state.wetMode;
+  dry.style.background = !w ? 'var(--accent)' : 'transparent';
+  dry.style.color      = !w ? '#000' : 'var(--muted2)';
+  wet.style.background =  w ? 'var(--accent)' : 'transparent';
+  wet.style.color      =  w ? '#000' : 'var(--muted2)';
+}
+
+// ── SOLO / MIX ──
+function toggleSoloMix() {
+  state.soloMode = !state.soloMode;
+  updateSoloMixUI();
+}
+function updateSoloMixUI() {
+  const solo = document.getElementById('solo-btn');
+  const mix  = document.getElementById('mix-btn');
+  if (!solo || !mix) return;
+  const s = state.soloMode;
+  solo.style.background = s ? 'var(--accent)' : 'transparent';
+  solo.style.color      = s ? '#000' : 'var(--muted2)';
+  mix.style.background  = !s ? 'var(--accent)' : 'transparent';
+  mix.style.color       = !s ? '#000' : 'var(--muted2)';
 }
 
 // ── METER ──
@@ -1679,7 +1749,6 @@ function drawMeter() {
   });
 
   detectHowling(bandVals, rawVals);
-  if (state.realtimeOn) checkBalance(bandVals);
 }
 
 // ── HOWLING ──
@@ -1862,8 +1931,6 @@ async function handleMic() {
     const ok = await initAudio(state.deviceId);
     if (!ok) return;
   }
-  const liveKey = (document.getElementById('api-key-input')?.value||'').trim() || state.apiKey;
-  if (!liveKey) { alert('⚙ 설정에서 Gemini API Key를 먼저 입력해주세요.'); toggleSettings(); return; }
   startRecording();
 }
 
@@ -1899,7 +1966,24 @@ function startRecording() {
   const recCtx = new AudioContext();
   const recSrc = recCtx.createMediaStreamSource(state.micStream);
   const recDst = recCtx.createMediaStreamDestination();
-  recSrc.connect(recDst);
+  if (state.wetMode) {
+    const agcNode = recCtx.createGain();
+    agcNode.gain.value = state.agcGain;
+    const manGainNode = recCtx.createGain();
+    manGainNode.gain.value = state.manualGain;
+    const recComp = recCtx.createDynamicsCompressor();
+    recComp.knee.value      = state.compressor.knee.value;
+    recComp.attack.value    = state.compressor.attack.value;
+    recComp.release.value   = state.compressor.release.value;
+    recComp.threshold.value = state.compressor.threshold.value;
+    recComp.ratio.value     = state.compressor.ratio.value;
+    recSrc.connect(agcNode);
+    agcNode.connect(manGainNode);
+    manGainNode.connect(recComp);
+    recComp.connect(recDst);
+  } else {
+    recSrc.connect(recDst);
+  }
   const recorder = new MediaRecorder(recDst.stream, { mimeType: AUDIO_MIME });
   state.mediaRecorder = recorder;
   recorder.ondataavailable = e => { if(e.data.size>0) state.audioChunks.push(e.data); };
@@ -1982,25 +2066,39 @@ async function analyzeWithGemini(audioBlob, num) {
   try {
     const base64 = await blobToBase64(audioBlob);
 
-    // 1. SYSTEM_PROMPT + 믹스 취향 (prompts.js)
-    const mixSection = buildMixPrompt(state.mixPref);
+    // 1. SYSTEM_PROMPT + 믹스 취향
+    let mixSection;
+    if (state.soloMode) {
+      // SOLO 모드: 사운드밀도·저역느낌만 전달
+      const soloLines = [SYSTEM_PROMPT, ''];
+      soloLines.push('[Mix preference — advise according to these guidelines. Never violate these instructions.]');
+      const density = MIX_PROMPTS.soundDensity[state.mixPref.density];
+      if (density) soloLines.push(`Sound density: ${density}`);
+      const bf = MIX_PROMPTS.bassFeeling[state.mixPref.lowFeel];
+      if (bf) soloLines.push(`Low end: ${bf}`);
+      mixSection = soloLines.filter(l => l !== undefined).join('\n');
+    } else {
+      mixSection = buildMixPrompt(state.mixPref);
+    }
 
-    // 2. 공간 환경 + 공간 메모
+    // 2. 공간 환경 + 공간 메모 (SOLO 모드에서는 생략)
     const env = state.spaceEnv;
     let spaceSection = '';
-    if ((env.mode || 'live') === 'studio') {
-      spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통';
-    } else {
-      const envParts = [];
-      if (env.venue)  envParts.push(`공간크기=${env.venue}`);
-      if (env.reverb) envParts.push(`반사음=${env.reverb}`);
-      if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
-      if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
-      if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
-      spaceSection = [
-        envParts.length ? '공간 환경: ' + envParts.join(', ') : '',
-        env.memo ? '공간 메모: ' + env.memo : '',
-      ].filter(Boolean).join('\n');
+    if (!state.soloMode) {
+      if ((env.mode || 'live') === 'studio') {
+        spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통';
+      } else {
+        const envParts = [];
+        if (env.venue)  envParts.push(`공간크기=${env.venue}`);
+        if (env.reverb) envParts.push(`반사음=${env.reverb}`);
+        if (env.sub)    envParts.push(`서브우퍼=${env.sub}`);
+        if (env.delay)  envParts.push(`딜레이스피커=${env.delay}`);
+        if (env.fb)     envParts.push(`피드백여유=${env.fb}`);
+        spaceSection = [
+          envParts.length ? '공간 환경: ' + envParts.join(', ') : '',
+          env.memo ? '공간 메모: ' + env.memo : '',
+        ].filter(Boolean).join('\n');
+      }
     }
 
     // 3. 채널 구성
@@ -2015,24 +2113,30 @@ async function analyzeWithGemini(audioBlob, num) {
     const instantMemo = document.getElementById('instant-memo')?.value.trim();
     const memoSection = instantMemo ? '즉석 메모: ' + instantMemo : '';
 
-    const contextBlock = [mixSection, spaceSection, channelInfo, sourceInfo, memoSection].filter(Boolean).join('\n');
+    // 6. 사용자 힌트
+    const hintSection = state.userHint ? `User focus: ${state.userHint}` : '';
 
-    const prompt = `${contextBlock}
+    const contextBlock = [mixSection, spaceSection, channelInfo, sourceInfo, memoSection, hintSection].filter(Boolean).join('\n');
+
+    const soloNote = state.soloMode
+      ? '\nSingle instrument analysis mode. Focus only on the single most dominant instrument. Treat any other faint or background sounds as irrelevant bleed and ignore them completely. Do not give band balance advice.'
+      : '';
+
+    const prompt = `${contextBlock}${soloNote}
 
 첨부된 5초 오디오를 듣고 믹스 엔지니어에게 조언해주세요.
 
 규칙:
-- 조용하거나 음악이 없으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
+- 조용하거나 악기,보컬 모두 감지되지 않으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
 - 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")
 - 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")
 - 전체 3~4줄 이내, 간결하게
 - 문제 없으면: "지금 믹스 완벽해요 🎚️" 한 줄만`;
 
-    const liveKey = (document.getElementById('api-key-input')?.value||'').trim() || state.apiKey;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:generateContent?key=${liveKey}`,
+      `https://proxy.dumpit.dev/v1beta/models/${state.model}:generateContent`,
       {
         method:'POST', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
@@ -2093,8 +2197,6 @@ function blobToBase64(blob) {
 
 // ── SETTINGS ──
 function renderSettings() {
-  document.getElementById('api-key-input').value = state.apiKey;
-  document.getElementById('rt-toggle').checked = state.realtimeOn;
   const modelMap = {
     'gemini-2.5-flash': 'model-2.5-flash',
     'gemini-3-flash-preview': 'model-3-flash',
@@ -2142,8 +2244,6 @@ function saveChannels() {
 let detectedChannels = [];
 async function detectChannels() {
   if (state.isDetecting) return;
-  const liveKey = (document.getElementById('api-key-input')?.value||'').trim() || state.apiKey;
-  if (!liveKey) { alert('Gemini API Key를 먼저 입력해주세요.'); return; }
   if (!state.audioCtx||!state.micStream) { const ok=await initAudio(state.deviceId); if(!ok) return; }
 
   state.isDetecting = true;
@@ -2178,7 +2278,7 @@ async function detectChannels() {
 - 아무 소리도 없으면 "소리 없음" 한 줄만`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:generateContent?key=${liveKey}`,
+      `https://proxy.dumpit.dev/v1beta/models/${state.model}:generateContent`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:AUDIO_GEMINI_MIME,data:base64}}]}],
           generationConfig:{maxOutputTokens:100,temperature:0.2,...(state.model!=='gemini-2.5-flash'&&{thinkingConfig:{thinkingLevel:"MINIMAL"}})}})
@@ -2267,14 +2367,12 @@ function deletePreset(i) {
   state.presets.splice(i,1); if(state.activePreset===i) state.activePreset=null; renderPresets(); saveToStorage();
 }
 function saveSettings() {
-  state.apiKey=document.getElementById('api-key-input').value.trim();
   saveToStorage(); alert('저장됐어요 ✓');
 }
 
 function exportSettings() {
   flushSpaceMemo();
   const data = {
-    apiKey: state.apiKey,
     channels: state.channels,
     presets: state.presets,
     source: state.source,
@@ -2301,7 +2399,6 @@ function importSettings(event) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      if (data.apiKey !== undefined) state.apiKey = data.apiKey;
       if (Array.isArray(data.channels)) state.channels = data.channels;
       if (Array.isArray(data.presets)) state.presets = data.presets;
       if (data.source) state.source = data.source;
@@ -2401,17 +2498,11 @@ function renderSpaceEnv() {
   renderSpacePresets();
 }
 function renderSpacePresets() {
-  const el = document.getElementById('space-preset-list');
-  if (!el) return;
-  if (!state.spacePresets.length) { el.innerHTML = ''; return; }
-  el.innerHTML = state.spacePresets.map((p, i) => `
-    <div class="preset-item" onclick="loadSpacePreset(${i})">
-      <div class="preset-dot"></div>
-      <div class="preset-name">${p.name}</div>
-      <div class="preset-actions">
-        <button class="preset-btn del" onclick="event.stopPropagation();deleteSpacePreset(${i})">삭제</button>
-      </div>
-    </div>`).join('');
+  const sel = document.getElementById('space-preset-select');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— 프리셋 선택 —</option>' +
+    state.spacePresets.map((p, i) => `<option value="${i}"${String(i)===cur?' selected':''}>${p.name}</option>`).join('');
 }
 function saveSpacePreset() {
   flushSpaceMemo();
@@ -2421,11 +2512,15 @@ function saveSpacePreset() {
   document.getElementById('modal-input').focus();
 }
 function loadSpacePreset(i) {
-  state.spaceEnv = { ...state.spacePresets[i].env };
+  if (i === '' || i === null || i === undefined) return;
+  state.spaceEnv = { ...state.spacePresets[Number(i)].env };
   localStorage.setItem('space_env', JSON.stringify(state.spaceEnv));
   renderSpaceEnv();
 }
-function deleteSpacePreset(i) {
+function deleteSpacePreset() {
+  const sel = document.getElementById('space-preset-select');
+  const i = Number(sel?.value);
+  if (sel?.value === '' || !state.spacePresets[i]) return;
   if (!confirm(`"${state.spacePresets[i].name}" 프리셋을 삭제할까요?`)) return;
   state.spacePresets.splice(i, 1);
   localStorage.setItem('space_presets', JSON.stringify(state.spacePresets));
@@ -2530,6 +2625,8 @@ loadSettings();
 initSpacePresets();
 renderChannelView();
 updateSourceUI();
+updateDryWetUI();
+updateSoloMixUI();
 drawMeter();
 setComp(0.4);
 (async()=>{ await initAudio(state.deviceId); })();
