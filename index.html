@@ -2286,7 +2286,7 @@ async function analyzeWithGemini(audioBlob, num) {
 
     // 3. 입력 소스
     const sourceInfo = state.source === 'phone'
-       ? 'Input: Smartphone microphone (low-cut correction mode). Note: low-end below 200Hz may be underrepresented, mid-high around 2.5~5kHz may appear stronger than actual, and vocals may appear more prominent than they actually are. Do not over-advise cuts in these ranges unless clearly problematic. Focus advice on room characteristics, overall mix balance, frequency distribution, and rather than precise EQ adjustments.' 
+       ? 'Input: Smartphone microphone (low-cut correction mode). Note: low-end below 200Hz may be underrepresented, mid-high around 2.5~5kHz may appear stronger than actual, and vocals may appear more prominent than they actually are. Do not over-advise cuts in these ranges unless clearly problematic. Focus advice on room tuning, overall mix balance, frequency distribution, and rather than precise EQ adjustments.' 
        : 'Input: Audio interface (flat, accurate frequency response)';
 
     // 5. 즉석 메모
