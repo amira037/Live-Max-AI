@@ -473,19 +473,42 @@ input[type=range] {
 
 .advice-notice {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: clamp(8px,1.5vw,12px) clamp(12px,2.5vw,20px);
   border-top: 1px solid var(--border);
-  text-align: center;
   font-family: var(--font-mono);
   font-size: var(--md);
   color: var(--fg);
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+.notice-toggle-btn {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+  line-height: 1.4;
+  font-family: var(--font-mono);
+  transition: color 0.15s, border-color 0.15s;
+}
+.notice-toggle-btn:hover { color: var(--fg); border-color: var(--muted); }
+
 @media (max-width: 767px) and (orientation: portrait) {
   .advice-notice {
     font-size: clamp(12px, 4.5vw, 15px);
     padding: clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 20px);
+  }
+  .notice-toggle-btn {
+    display: inline-flex;
+    align-items: center;
   }
 }
 
@@ -1332,7 +1355,10 @@ input[type=range] {
         </div>
         <div id="analysis-list"></div>
       </div>
-      <div class="advice-notice" data-i18n="advice_notice">⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다</div>
+      <div class="advice-notice" id="advice-notice">
+        <span class="notice-text" data-i18n="advice_notice">⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다</span>
+        <button class="notice-toggle-btn" id="notice-toggle-btn" onclick="toggleAdviceNotice()" aria-label="알림 숨기기">✕</button>
+      </div>
     </div>
 
   </div>
@@ -3219,6 +3245,13 @@ _ctrlMQ.addEventListener('change', initControlsPanel);
     document.getElementById(paneId).classList.add('fs-open');
     document.body.style.overflow = 'hidden';
   }
+
+  // advice-notice 닫기 (모바일 세로, 한 번 닫으면 복구 불가)
+  window.toggleAdviceNotice = function() {
+    const notice = document.getElementById('advice-notice');
+    if (!notice) return;
+    notice.style.display = 'none';
+  };
 
   window.closeFS = function(e) {
     if (e) e.stopPropagation();
