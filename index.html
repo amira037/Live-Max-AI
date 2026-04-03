@@ -37,6 +37,10 @@ Follow these rules absolutely:
 - Suggest professional methods: fader level, compressor, low-cut, high-cut, EQ, low shelving EQ, high shelving EQ, reverb, etc.
 - For EQ adjustments, specify the Q factor.
 - For Compressor, specify the Ratio, Attack time, Make up Gain
+- Vocal compressor attack time rules:
+  When lyric clarity is needed (consonant emphasis): set attack 10ms~30ms, allowing consonants to pass before compression
+  When vocal sounds harsh or peaky: set attack 1ms~5ms to catch peaks and blend into the mix
+  Default approach: start around 10ms, adjust by ear until first syllables remain clear and unaffected
 
 [INTERNAL ANALYSIS PROTOCOL - DO NOT OUTPUT]
 1. Silently identify all prominent instruments and vocals detected in the audio.
@@ -51,15 +55,17 @@ Follow these rules absolutely:
 [STRICT CONSTRAINTS]
 - DO NOT include channel numbers in your response.
 - DO NOT discuss "hypothetical" instruments. If a source is NOT detected in the CURRENT 5-second clip, it must be ignored entirely, even if mentioned in other prompts.
-- If no instruments are detected, state: "명확한 오디오 신호가 감지되지 않았습니다. 더 깨끗한 신호를 입력해주세요."
+- If no instruments are detected, notify the engineer that no clear audio was detected and ask for a cleaner signal.
 
 [ANALYSIS HIERARCHY & PRIORITIZATION]
 - Scenario A: Multiple Instruments and Vocals Detected (Full Band Mix)
-  1. Intra-Band Balance: Focus on the volume and frequency balance between individual instruments.
-  2. Suggest fader level adjustments (e.g. "+2dB", "-1.5dB") when balance is the issue.
-  3. Group Balance: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.'
-  4. Individual Channel Precision: Provide specific EQ and tonal adjustments to resolve masking.
+  1. Identify the music genre (pop, worship, rock, jazz, k-pop, classical, speech, etc.) and adjust mix standards accordingly. Each genre has different acceptable tonal balance.
+  2. Intra-Band Balance: Focus on the volume and frequency balance between individual instruments.
+  3. Suggest fader level adjustments (e.g. "+2dB", "-1.5dB") when balance is the issue.
+  4. Group Balance: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.'
+  5. Individual Channel Precision: Provide specific EQ and tonal adjustments to resolve masking and achieve harmonic balance between elements.
   *Never jump to vocal tone advice before checking overall balance first.
+  *Do not focus solely on vocals. Always address instrument balance before any vocal advice. Vary your advice across different elements of the mix.
 
 - Scenario B: Single Instrument or Single Vocal Detected (Solo/Isolated Track)
   1. Tonal Correction (EQ): Adjust the fundamental tone and remove problematic frequencies.
@@ -69,7 +75,8 @@ Follow these rules absolutely:
 - Start your response immediately with the prioritized advice.
 - Focus purely on actionable mixing solutions.
 - Always specify the instrument name when giving advice about a specific source.
-- ALWAYS RESPOND IN KOREAN.
+- Maximum 2 actionable advice items per response. Do not repeat or rephrase the same issue.
+- When input source is phone/smartphone microphone: never mention the microphone type in advice
 `.trim();
 
 const MODE_PROMPTS = {
@@ -95,7 +102,7 @@ const MIX_PROMPTS = {
 
   vocalWeight: {
     '밴드중심':  "Focus on band energy, Vocals should be buried behind the instruments, creating an alternative rock-style sound where vocals feel distant and dreamy.",
-    '균형':     "Prioritize overall band energy and balance. Vocals should sit back in the mix like k-pop idol musics.",
+    '균형':     "Prioritize beats and overall band energy and balance. Vocals should sit back in the mix like k-pop idol musics, do not mention of K-pop music",
     '보컬중심':  "Vocals and instruments should be evenly balanced and well-audible.",
   },
 
@@ -106,7 +113,7 @@ const MIX_PROMPTS = {
   },
 
   drumPunch: {
-    '자연스럽게':"Drums should sit back slightly, supporting the musical flow without drawing attention.",
+    '자연스럽게':"Drums should sit back, supporting the musical flow without drawing attention.",
     '중립':      "",
     '강하게':    "Enhance kick and snare attack and punch. Make drums feel energetic and driving.",
   },
@@ -119,10 +126,12 @@ const MIX_PROMPTS = {
 };
 
 function buildMixPrompt(mixPref) {
+  const lang = (typeof state !== 'undefined' && state.lang) || 'ko';
   const lines = [];
   const mode = mixPref.type; // 'music' | 'speech' | 'mixed'
 
   lines.push(SYSTEM_PROMPT);
+  lines.push(lang === 'en' ? 'Always respond in English.' : 'Always respond in Korean.');
   lines.push('');
 
   const modePrompt = MODE_PROMPTS[mode];
@@ -250,6 +259,20 @@ header {
 }
 .btn-settings:hover { color:var(--text); border-color:var(--border2); }
 .btn-settings.active { color:var(--accent); border-color:rgba(0,255,136,0.4); }
+
+/* ── LANGUAGE TOGGLE ── */
+.btn-lang {
+  display:flex; align-items:center; cursor:pointer;
+  border-radius:99px; overflow:hidden;
+  border:1px solid var(--border2); flex-shrink:0;
+  font-family:var(--font-mono); letter-spacing:0.06em;
+}
+.btn-lang span {
+  padding:3px 9px; font-size:var(--xs); transition:all 0.2s;
+}
+@media (max-width: 767px) and (orientation: portrait) {
+  .btn-lang span { font-size:13px !important; padding:6px 11px !important; }
+}
 
 /* ── MAIN BODY ── */
 .main-body {
@@ -450,12 +473,20 @@ input[type=range] {
 
 .advice-notice {
   flex-shrink: 0;
-  padding: clamp(6px,1vw,8px) clamp(12px,2.5vw,20px);
+  padding: clamp(8px,1.5vw,12px) clamp(12px,2.5vw,20px);
   border-top: 1px solid var(--border);
   text-align: center;
   font-family: var(--font-mono);
-  font-size: var(--xs);
-  color: var(--muted);
+  font-size: var(--md);
+  color: var(--fg);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+@media (max-width: 767px) and (orientation: portrait) {
+  .advice-notice {
+    font-size: clamp(15px, 4.5vw, 19px);
+    padding: clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 20px);
+  }
 }
 
 /* ── CARDS ── */
@@ -1190,7 +1221,11 @@ input[type=range] {
     <div class="app-name">LIVE MAX <span>AI</span></div>
     <div class="header-right">
       <div class="lamp" id="lamp"></div>
-      <span class="lamp-label" id="lamp-label">대기</span>
+      <span class="lamp-label" id="lamp-label" data-lamp-state="idle">대기</span>
+      <div class="btn-lang" id="lang-toggle" onclick="toggleLang()">
+        <span id="lang-ko-btn">KO</span>
+        <span id="lang-en-btn">EN</span>
+      </div>
       <button class="btn-settings" id="settings-btn" onclick="toggleSettings()">⚙</button>
     </div>
   </header>
@@ -1254,7 +1289,7 @@ input[type=range] {
         <!-- DRY / WET toggle -->
         <div class="ctrl-row">
           <span class="ctrl-label" style="color:var(--muted2)">REC</span>
-          <span class="ctrl-rt-label">녹음 방식</span>
+          <span class="ctrl-rt-label" data-i18n="rec_mode_label">녹음 방식</span>
           <div id="dry-wet-toggle" onclick="toggleDryWet()" style="display:flex;align-items:center;cursor:pointer;border-radius:99px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;">
             <span id="dry-btn" style="padding:3px 8px;font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;">DRY</span>
             <span id="wet-btn" style="padding:3px 8px;font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;">WET</span>
@@ -1266,7 +1301,7 @@ input[type=range] {
       <!-- Mic button -->
       <div class="mic-wrap">
         <div style="display:flex;align-items:center;gap:clamp(10px,2vw,18px);">
-          <input id="user-hint-input" type="text" maxlength="20" placeholder="무엇을 조언할까요?"
+          <input id="user-hint-input" type="text" maxlength="20" placeholder="무엇을 조언할까요?" data-i18n="hint_placeholder"
             oninput="state.userHint=this.value.trim()"
             onkeydown="if(event.key==='Enter'){this.blur();handleMic();}"
             style="width:clamp(90px,18vw,160px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:clamp(4px,0.8vw,7px) clamp(8px,1.2vw,12px);font-family:var(--font-mono);font-size:var(--xs);color:var(--fg1);outline:none;flex-shrink:0;"
@@ -1288,16 +1323,16 @@ input[type=range] {
     <div class="advice-pane" id="advice-pane">
       <button class="fs-close-btn" onclick="closeFS(event)" aria-label="닫기">✕</button>
       <div class="advice-header" id="advice-header">
-        <span class="advice-title">조언</span>
+        <span class="advice-title" data-i18n="advice_title">조언</span>
       </div>
       <div class="cards-scroll" id="cards-scroll">
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">🎚️</span>
-          <span class="empty-text">MaxAI 버튼을 눌러<br>5초 믹스를 분석해보세요</span>
+          <span class="empty-text" data-i18n="empty_text">MaxAI 버튼을 눌러<br>5초 믹스를 분석해보세요</span>
         </div>
         <div id="analysis-list"></div>
       </div>
-      <div class="advice-notice">⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다</div>
+      <div class="advice-notice" data-i18n="advice_notice">⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다</div>
     </div>
 
   </div>
@@ -1307,7 +1342,7 @@ input[type=range] {
     <div class="howl-bar-inner">
       <span class="howl-bar-icon">⚠</span>
       <div class="howl-bar-text">
-        <span class="howl-bar-title">하울링 감지</span>
+        <span class="howl-bar-title" data-i18n="howl_title">하울링 감지</span>
         <span class="howl-bar-freq" id="howl-bar-freq">—</span>
       </div>
       <span class="howl-bar-time" id="howl-bar-time"></span>
@@ -1321,25 +1356,25 @@ input[type=range] {
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettingsOnBg(event)">
   <div class="settings-panel">
     <div class="settings-header">
-      <span class="settings-title">설정</span>
+      <span class="settings-title" data-i18n="settings_title">설정</span>
       <button class="settings-close" onclick="toggleSettings()">✕</button>
     </div>
     <div class="settings-inner">
 
       <!-- ▶ 입력 장치 -->
       <div class="setting-section" id="setting-section-device">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>입력 장치</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_device">입력 장치</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
           <select class="api-input" id="device-select" onchange="changeDevice(this.value)" style="cursor:pointer">
-            <option value="default">기본 마이크</option>
+            <option value="default" data-i18n="device_default">기본 마이크</option>
           </select>
-          <div class="ch-hint">LIVE 탭을 열면 장치 목록이 자동으로 불러와져요</div>
+          <div class="ch-hint" data-i18n="device_hint">LIVE 탭을 열면 장치 목록이 자동으로 불러와져요</div>
         </div>
       </div>
 
       <!-- ▶ AI 모델 -->
       <div class="setting-section">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>AI 모델</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_model">AI 모델</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
           <div class="radio-group">
             <div class="radio-option" id="model-2.5-flash" onclick="selectModel('gemini-2.5-flash')">
@@ -1360,143 +1395,143 @@ input[type=range] {
 
       <!-- ▶ 공간 환경 -->
       <div class="setting-section" id="setting-section-space">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>공간 환경</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_space">공간 환경</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
           <!-- 공간 유형 -->
           <div class="seg-row">
-            <div class="seg-label">공간 유형</div>
+            <div class="seg-label" data-i18n="space_type_label">공간 유형</div>
             <div class="seg-group" id="seg-space-mode">
-              <button class="seg-btn" onclick="setSpaceMode('live',this)">라이브 PA</button>
-              <button class="seg-btn" onclick="setSpaceMode('studio',this)">스튜디오</button>
+              <button class="seg-btn" data-val="live" data-i18n="space_live_pa" onclick="setSpaceMode('live',this)">라이브 PA</button>
+              <button class="seg-btn" data-val="studio" data-i18n="space_studio" onclick="setSpaceMode('studio',this)">스튜디오</button>
             </div>
           </div>
           <!-- 라이브 PA 전용 슬라이더 -->
           <div id="space-live-fields">
           <div class="seg-row">
-            <div class="seg-label">공간 크기</div>
+            <div class="seg-label" data-i18n="space_size_label">공간 크기</div>
             <div class="seg-group" id="seg-venue">
-              <button class="seg-btn" onclick="setSpaceEnv('venue','소형실내',this)">소형실내</button>
-              <button class="seg-btn" onclick="setSpaceEnv('venue','중형실내',this)">중형실내</button>
-              <button class="seg-btn" onclick="setSpaceEnv('venue','대형/야외',this)">대형/야외</button>
+              <button class="seg-btn" data-val="소형실내" data-i18n="space_size_0" onclick="setSpaceEnv('venue','소형실내',this)">소형실내</button>
+              <button class="seg-btn" data-val="중형실내" data-i18n="space_size_1" onclick="setSpaceEnv('venue','중형실내',this)">중형실내</button>
+              <button class="seg-btn" data-val="대형/야외" data-i18n="space_size_2" onclick="setSpaceEnv('venue','대형/야외',this)">대형/야외</button>
             </div>
           </div>
           <div class="seg-row">
-            <div class="seg-label">반사음</div>
+            <div class="seg-label" data-i18n="space_reverb_label">반사음</div>
             <div class="seg-group" id="seg-reverb">
-              <button class="seg-btn" onclick="setSpaceEnv('reverb','적음',this)">적음</button>
-              <button class="seg-btn" onclick="setSpaceEnv('reverb','보통',this)">보통</button>
-              <button class="seg-btn" onclick="setSpaceEnv('reverb','많음',this)">많음</button>
+              <button class="seg-btn" data-val="적음" data-i18n="space_reverb_0" onclick="setSpaceEnv('reverb','적음',this)">적음</button>
+              <button class="seg-btn" data-val="보통" data-i18n="space_reverb_1" onclick="setSpaceEnv('reverb','보통',this)">보통</button>
+              <button class="seg-btn" data-val="많음" data-i18n="space_reverb_2" onclick="setSpaceEnv('reverb','많음',this)">많음</button>
             </div>
           </div>
           <div class="seg-row">
-            <div class="seg-label">서브우퍼</div>
+            <div class="seg-label" data-i18n="space_sub_label">서브우퍼</div>
             <div class="seg-group" id="seg-sub">
-              <button class="seg-btn" onclick="setSpaceEnv('sub','없음',this)">없음</button>
-              <button class="seg-btn" onclick="setSpaceEnv('sub','소형',this)">소형</button>
-              <button class="seg-btn" onclick="setSpaceEnv('sub','대형',this)">대형</button>
+              <button class="seg-btn" data-val="없음" data-i18n="space_sub_0" onclick="setSpaceEnv('sub','없음',this)">없음</button>
+              <button class="seg-btn" data-val="소형" data-i18n="space_sub_1" onclick="setSpaceEnv('sub','소형',this)">소형</button>
+              <button class="seg-btn" data-val="대형" data-i18n="space_sub_2" onclick="setSpaceEnv('sub','대형',this)">대형</button>
             </div>
           </div>
           <div class="seg-row">
-            <div class="seg-label">딜레이 스피커</div>
+            <div class="seg-label" data-i18n="space_delay_label">딜레이 스피커</div>
             <div class="seg-group" id="seg-delay">
-              <button class="seg-btn" onclick="setSpaceEnv('delay','없음',this)">없음</button>
-              <button class="seg-btn" onclick="setSpaceEnv('delay','일부',this)">일부</button>
-              <button class="seg-btn" onclick="setSpaceEnv('delay','풀커버',this)">풀커버</button>
+              <button class="seg-btn" data-val="없음" data-i18n="space_delay_0" onclick="setSpaceEnv('delay','없음',this)">없음</button>
+              <button class="seg-btn" data-val="일부" data-i18n="space_delay_1" onclick="setSpaceEnv('delay','일부',this)">일부</button>
+              <button class="seg-btn" data-val="풀커버" data-i18n="space_delay_2" onclick="setSpaceEnv('delay','풀커버',this)">풀커버</button>
             </div>
           </div>
           <div class="seg-row">
-            <div class="seg-label">피드백 여유</div>
+            <div class="seg-label" data-i18n="space_fb_label">피드백 여유</div>
             <div class="seg-group" id="seg-fb">
-              <button class="seg-btn" onclick="setSpaceEnv('fb','타이트',this)">타이트</button>
-              <button class="seg-btn" onclick="setSpaceEnv('fb','보통',this)">보통</button>
-              <button class="seg-btn" onclick="setSpaceEnv('fb','여유있게',this)">여유있게</button>
+              <button class="seg-btn" data-val="타이트" data-i18n="space_fb_0" onclick="setSpaceEnv('fb','타이트',this)">타이트</button>
+              <button class="seg-btn" data-val="보통" data-i18n="space_fb_1" onclick="setSpaceEnv('fb','보통',this)">보통</button>
+              <button class="seg-btn" data-val="여유있게" data-i18n="space_fb_2" onclick="setSpaceEnv('fb','여유있게',this)">여유있게</button>
             </div>
           </div>
-          <textarea class="memo-input" id="space-memo" placeholder="공간 관련 고정 메모..." oninput="saveSpaceMemoLive()"></textarea>
+          <textarea class="memo-input" id="space-memo" placeholder="공간 관련 고정 메모..." data-i18n="space_memo_placeholder" oninput="saveSpaceMemoLive()"></textarea>
           <div style="display:flex;gap:8px;align-items:center;">
             <select id="space-preset-select" onchange="loadSpacePreset(this.value)"
               style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:calc(var(--r)*0.8);padding:clamp(8px,1.4vw,12px) clamp(10px,1.6vw,14px);color:var(--text);font-family:var(--font-mono);font-size:var(--sm);outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;">
               <option value="">— 프리셋 선택 —</option>
             </select>
-            <button class="btn btn-secondary" style="color:var(--danger);border-color:rgba(255,68,68,0.3);flex-shrink:0" onclick="deleteSpacePreset()">삭제</button>
+            <button class="btn btn-secondary" style="color:var(--danger);border-color:rgba(255,68,68,0.3);flex-shrink:0" data-i18n="space_preset_delete" onclick="deleteSpacePreset()">삭제</button>
           </div>
-          <button class="btn btn-secondary" style="width:100%" onclick="saveSpacePreset()">현재 공간 환경을 프리셋으로 저장</button>
+          <button class="btn btn-secondary" style="width:100%" data-i18n="space_preset_save" onclick="saveSpacePreset()">현재 공간 환경을 프리셋으로 저장</button>
           </div><!-- /space-live-fields -->
         </div>
       </div>
 
       <!-- ▶ 믹스 취향 -->
       <div class="setting-section" id="setting-section-mix">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>믹스 취향</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_mix">믹스 취향</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
           <div class="seg-row">
-            <div class="seg-label">행사 유형</div>
+            <div class="seg-label" data-i18n="mix_type_label">행사 유형</div>
             <div class="seg-group" id="seg-mix-type">
-              <button class="seg-btn" onclick="setMixType('music',this)">음악 중심</button>
-              <button class="seg-btn" onclick="setMixType('speech',this)">스피치 중심</button>
-              <button class="seg-btn" onclick="setMixType('mixed',this)">혼합</button>
+              <button class="seg-btn" data-val="music" data-i18n="mix_type_music" onclick="setMixType('music',this)">음악 중심</button>
+              <button class="seg-btn" data-val="speech" data-i18n="mix_type_speech" onclick="setMixType('speech',this)">스피치 중심</button>
+              <button class="seg-btn" data-val="mixed" data-i18n="mix_type_mixed" onclick="setMixType('mixed',this)">혼합</button>
             </div>
-            <div id="mix-mixed-hint" class="ch-hint" style="display:none">음악·스피치 취향을 모두 분석에 반영해요. </div>
+            <div id="mix-mixed-hint" class="ch-hint" data-i18n="mix_mixed_hint" style="display:none">음악·스피치 취향을 모두 분석에 반영해요. </div>
           </div>
           <div class="seg-row" id="vocal-config-row">
-            <div class="seg-label">보컬 구성</div>
+            <div class="seg-label" data-i18n="vocal_config_label">보컬 구성</div>
             <div class="seg-group" id="seg-vocal-config">
-              <button class="seg-btn" onclick="setVocalConfig('none',this)">없음</button>
-              <button class="seg-btn" onclick="setVocalConfig('yes',this)">있음</button>
-              <button class="seg-btn" onclick="setVocalConfig('leader',this)">보컬+리더</button>
+              <button class="seg-btn" data-val="none" data-i18n="vocal_none" onclick="setVocalConfig('none',this)">없음</button>
+              <button class="seg-btn" data-val="yes" data-i18n="vocal_yes" onclick="setVocalConfig('yes',this)">있음</button>
+              <button class="seg-btn" data-val="leader" data-i18n="vocal_leader" onclick="setVocalConfig('leader',this)">보컬+리더</button>
             </div>
           </div>
           <div class="seg-row" id="density-row">
-            <div class="seg-label">사운드 밀도</div>
+            <div class="seg-label" data-i18n="density_label">사운드 밀도</div>
             <div class="seg-group" id="seg-density">
-              <button class="seg-btn" onclick="setMixPref('density','두껍게',this)">두껍게</button>
-              <button class="seg-btn" onclick="setMixPref('density','중립',this)">중립</button>
-              <button class="seg-btn" onclick="setMixPref('density','깔끔하게',this)">깔끔하게</button>
+              <button class="seg-btn" data-val="두껍게" data-i18n="density_0" onclick="setMixPref('density','두껍게',this)">두껍게</button>
+              <button class="seg-btn" data-val="중립" data-i18n="density_1" onclick="setMixPref('density','중립',this)">중립</button>
+              <button class="seg-btn" data-val="깔끔하게" data-i18n="density_2" onclick="setMixPref('density','깔끔하게',this)">깔끔하게</button>
             </div>
           </div>
           <div id="mix-music-fields">
             <div id="mix-vocal-fields">
               <div class="seg-row">
-                <div class="seg-label">보컬 톤</div>
+                <div class="seg-label" data-i18n="vocal_tone_label">보컬 톤</div>
                 <div class="seg-group" id="seg-vocal-tone">
-                  <button class="seg-btn" onclick="setMixPref('vocalTone','부드럽게',this)">부드럽게</button>
-                  <button class="seg-btn" onclick="setMixPref('vocalTone','중립',this)">중립</button>
-                  <button class="seg-btn" onclick="setMixPref('vocalTone','명료하게',this)">명료하게</button>
+                  <button class="seg-btn" data-val="부드럽게" data-i18n="vocal_tone_0" onclick="setMixPref('vocalTone','부드럽게',this)">부드럽게</button>
+                  <button class="seg-btn" data-val="중립" data-i18n="vocal_tone_1" onclick="setMixPref('vocalTone','중립',this)">중립</button>
+                  <button class="seg-btn" data-val="명료하게" data-i18n="vocal_tone_2" onclick="setMixPref('vocalTone','명료하게',this)">명료하게</button>
                 </div>
               </div>
               <div class="seg-row">
-                <div class="seg-label">보컬 비중</div>
+                <div class="seg-label" data-i18n="vocal_weight_label">보컬 비중</div>
                 <div class="seg-group" id="seg-vocal-weight">
-                  <button class="seg-btn" onclick="setMixPref('vocalWeight','밴드중심',this)">밴드중심</button>
-                  <button class="seg-btn" onclick="setMixPref('vocalWeight','균형',this)">균형</button>
-                  <button class="seg-btn" onclick="setMixPref('vocalWeight','보컬중심',this)">보컬중심</button>
+                  <button class="seg-btn" data-val="밴드중심" data-i18n="vocal_weight_0" onclick="setMixPref('vocalWeight','밴드중심',this)">밴드중심</button>
+                  <button class="seg-btn" data-val="균형" data-i18n="vocal_weight_1" onclick="setMixPref('vocalWeight','균형',this)">균형</button>
+                  <button class="seg-btn" data-val="보컬중심" data-i18n="vocal_weight_2" onclick="setMixPref('vocalWeight','보컬중심',this)">보컬중심</button>
                 </div>
               </div>
             </div><!-- /mix-vocal-fields -->
             <div class="seg-row">
-              <div class="seg-label">저역 느낌</div>
+              <div class="seg-label" data-i18n="low_feel_label">저역 느낌</div>
               <div class="seg-group" id="seg-low-feel">
-                <button class="seg-btn" onclick="setMixPref('lowFeel','타이트',this)">타이트</button>
-                <button class="seg-btn" onclick="setMixPref('lowFeel','중립',this)">중립</button>
-                <button class="seg-btn" onclick="setMixPref('lowFeel','풍성하게',this)">풍성하게</button>
+                <button class="seg-btn" data-val="타이트" data-i18n="low_feel_0" onclick="setMixPref('lowFeel','타이트',this)">타이트</button>
+                <button class="seg-btn" data-val="중립" data-i18n="low_feel_1" onclick="setMixPref('lowFeel','중립',this)">중립</button>
+                <button class="seg-btn" data-val="풍성하게" data-i18n="low_feel_2" onclick="setMixPref('lowFeel','풍성하게',this)">풍성하게</button>
               </div>
             </div>
             <div class="seg-row">
-              <div class="seg-label">드럼 펀치</div>
+              <div class="seg-label" data-i18n="drum_punch_label">드럼 펀치</div>
               <div class="seg-group" id="seg-drum-punch">
-                <button class="seg-btn" onclick="setMixPref('drumPunch','자연스럽게',this)">자연스럽게</button>
-                <button class="seg-btn" onclick="setMixPref('drumPunch','중립',this)">중립</button>
-                <button class="seg-btn" onclick="setMixPref('drumPunch','강하게',this)">강하게</button>
+                <button class="seg-btn" data-val="자연스럽게" data-i18n="drum_punch_0" onclick="setMixPref('drumPunch','자연스럽게',this)">자연스럽게</button>
+                <button class="seg-btn" data-val="중립" data-i18n="drum_punch_1" onclick="setMixPref('drumPunch','중립',this)">중립</button>
+                <button class="seg-btn" data-val="강하게" data-i18n="drum_punch_2" onclick="setMixPref('drumPunch','강하게',this)">강하게</button>
               </div>
             </div>
           </div>
           <div id="mix-speech-fields" style="display:none;flex-direction:column;gap:clamp(8px,1.5vw,12px)">
             <div class="seg-row">
-              <div class="seg-label">말 명료도</div>
+              <div class="seg-label" data-i18n="clarity_label">말 명료도</div>
               <div class="seg-group" id="seg-clarity">
-                <button class="seg-btn" onclick="setMixPref('clarity','자연스럽게',this)">자연스럽게</button>
-                <button class="seg-btn" onclick="setMixPref('clarity','중립',this)">중립</button>
-                <button class="seg-btn" onclick="setMixPref('clarity','최대명료도',this)">최대명료도</button>
+                <button class="seg-btn" data-val="자연스럽게" data-i18n="clarity_0" onclick="setMixPref('clarity','자연스럽게',this)">자연스럽게</button>
+                <button class="seg-btn" data-val="중립" data-i18n="clarity_1" onclick="setMixPref('clarity','중립',this)">중립</button>
+                <button class="seg-btn" data-val="최대명료도" data-i18n="clarity_2" onclick="setMixPref('clarity','최대명료도',this)">최대명료도</button>
               </div>
             </div>
 
@@ -1506,28 +1541,28 @@ input[type=range] {
 
       <!-- ▶ 즉석 메모 -->
       <div class="setting-section">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>즉석 메모</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_memo">즉석 메모</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
-          <textarea class="memo-input" id="instant-memo" placeholder="세션 중 메모 (저장 안 됨)..." style="min-height:clamp(80px,15vw,120px)"></textarea>
-          <button class="btn btn-secondary" onclick="document.getElementById('instant-memo').value=''">초기화</button>
+          <textarea class="memo-input" id="instant-memo" placeholder="세션 중 메모 (저장 안 됨)..." data-i18n="memo_placeholder" style="min-height:clamp(80px,15vw,120px)"></textarea>
+          <button class="btn btn-secondary" data-i18n="memo_reset" onclick="document.getElementById('instant-memo').value=''">초기화</button>
         </div>
       </div>
 
       <!-- ▶ 튜토리얼 -->
       <div class="setting-section">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>도움말</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_help">도움말</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
-          <button class="btn btn-secondary" style="width:100%" onclick="toggleSettings();tutorialStartForce()">튜토리얼 다시 보기</button>
+          <button class="btn btn-secondary" style="width:100%" data-i18n="tutorial_restart" onclick="toggleSettings();tutorialStartForce()">튜토리얼 다시 보기</button>
         </div>
       </div>
 
       <!-- ▶ 설정 백업 -->
       <div class="setting-section">
-        <div class="acc-title" onclick="toggleAcc(this)"><span>설정 백업</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_backup">설정 백업</span><span class="acc-arrow">▶</span></div>
         <div class="acc-body">
           <div class="btn-row">
-            <button class="btn btn-secondary" onclick="exportSettings()">📤 내보내기</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📥 불러오기</button>
+            <button class="btn btn-secondary" data-i18n="backup_export" onclick="exportSettings()">📤 내보내기</button>
+            <button class="btn btn-secondary" data-i18n="backup_import" onclick="document.getElementById('import-file').click()">📥 불러오기</button>
           </div>
           <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSettings(event)">
         </div>
@@ -1540,11 +1575,11 @@ input[type=range] {
 <!-- Modal -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
-    <div class="modal-title">프리셋 이름</div>
-    <input class="modal-input" id="modal-input" placeholder="예: 교회 Sunday" maxlength="30">
+    <div class="modal-title" data-i18n="modal_preset_title">프리셋 이름</div>
+    <input class="modal-input" id="modal-input" placeholder="예: 교회 Sunday" data-i18n="modal_preset_placeholder" maxlength="30">
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
-      <button class="btn btn-primary" onclick="confirmPreset()">저장</button>
+      <button class="btn btn-secondary" data-i18n="modal_cancel" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" data-i18n="modal_save" onclick="confirmPreset()">저장</button>
     </div>
   </div>
 </div>
@@ -1565,6 +1600,183 @@ input[type=range] {
 </div>
 
 <script>
+// ── I18N ──
+const I18N = {
+  ko: {
+    lamp_idle:'대기', lamp_active:'청음중', lamp_rec:'녹음중', lamp_analyze:'분석중', lamp_error:'오류',
+    rec_mode_label:'녹음 방식',
+    hint_placeholder:'무엇을 조언할까요?',
+    empty_text:'MaxAI 버튼을 눌러<br>5초 믹스를 분석해보세요',
+    advice_title:'조언',
+    advice_notice:'⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다',
+    howl_title:'하울링 감지', howl_last:'마지막 하울링', howl_near:'부근', howl_at:'감지',
+    settings_title:'설정',
+    sec_device:'입력 장치', sec_model:'AI 모델', sec_space:'공간 환경',
+    sec_mix:'믹스 취향', sec_memo:'즉석 메모', sec_help:'도움말', sec_backup:'설정 백업',
+    device_default:'기본 마이크', device_hint:'LIVE 탭을 열면 장치 목록이 자동으로 불러와져요', device_mic_n:'마이크 ',
+    space_type_label:'공간 유형', space_live_pa:'라이브 PA', space_studio:'스튜디오',
+    space_size_label:'공간 크기', space_size_0:'소형실내', space_size_1:'중형실내', space_size_2:'대형/야외',
+    space_reverb_label:'반사음', space_reverb_0:'적음', space_reverb_1:'보통', space_reverb_2:'많음',
+    space_sub_label:'서브우퍼', space_sub_0:'없음', space_sub_1:'소형', space_sub_2:'대형',
+    space_delay_label:'딜레이 스피커', space_delay_0:'없음', space_delay_1:'일부', space_delay_2:'풀커버',
+    space_fb_label:'피드백 여유', space_fb_0:'타이트', space_fb_1:'보통', space_fb_2:'여유있게',
+    space_memo_placeholder:'공간 관련 고정 메모...', space_preset_select:'— 프리셋 선택 —',
+    space_preset_delete:'삭제', space_preset_save:'현재 공간 환경을 프리셋으로 저장',
+    mix_type_label:'행사 유형', mix_type_music:'음악 중심', mix_type_speech:'스피치 중심', mix_type_mixed:'혼합',
+    mix_mixed_hint:'음악·스피치 취향을 모두 분석에 반영해요.',
+    vocal_config_label:'보컬 구성', vocal_none:'없음', vocal_yes:'있음', vocal_leader:'보컬+리더',
+    density_label:'사운드 밀도', density_0:'두껍게', density_1:'중립', density_2:'깔끔하게',
+    vocal_tone_label:'보컬 톤', vocal_tone_0:'부드럽게', vocal_tone_1:'중립', vocal_tone_2:'명료하게',
+    vocal_weight_label:'보컬 비중', vocal_weight_0:'밴드중심', vocal_weight_1:'균형', vocal_weight_2:'보컬중심',
+    low_feel_label:'저역 느낌', low_feel_0:'타이트', low_feel_1:'중립', low_feel_2:'풍성하게',
+    drum_punch_label:'드럼 펀치', drum_punch_0:'자연스럽게', drum_punch_1:'중립', drum_punch_2:'강하게',
+    clarity_label:'말 명료도', clarity_0:'자연스럽게', clarity_1:'중립', clarity_2:'최대명료도',
+    memo_placeholder:'세션 중 메모 (저장 안 됨)...', memo_reset:'초기화',
+    tutorial_restart:'튜토리얼 다시 보기',
+    backup_export:'📤 내보내기', backup_import:'📥 불러오기',
+    modal_preset_title:'프리셋 이름', modal_preset_placeholder:'예: 교회 Sunday', modal_cancel:'취소', modal_save:'저장',
+    alert_saved:'저장됐어요 ✓', alert_import_ok:'설정을 불러왔어요 ✓',
+    alert_import_err:'파일을 읽을 수 없어요. JSON 형식인지 확인해주세요.',
+    alert_device_err:'이 마이크를 사용하려면 권한이 필요해요',
+    preset_delete_confirm:'"{name}" 프리셋을 삭제할까요?',
+    status_rec:'5초간 녹음 중...', status_rec_n:'{n}초간 녹음 중...', status_sending:'AI에 전송 중...', status_analyzing:'분석 중입니다...',
+    err_mic_perm:'마이크 권한을 허용해주세요.\niOS: 설정 > Safari > 마이크\nAndroid: 설정 > Chrome > 사이트 설정 > 마이크',
+    err_mic_notfound:'마이크를 찾을 수 없어요.\n장치 연결을 확인해주세요.',
+    err_mic_general:'마이크 접근 권한이 필요합니다.\n브라우저 설정에서 마이크를 허용해주세요.',
+    err_empty:'응답이 비어있어요', err_general:'오류가 발생했어요',
+    tut_next:'다음 →', tut_start:'시작하기 🎉', tut_skip:'건너뛰기',
+    tut_0:'안녕하세요! Live Max AI를 소개할게요 👋<br>몇 가지만 확인하면 바로 시작할 수 있어요!',
+    tut_1:'녹음 버튼을 누르면 5초 녹음 후 AI 조언이 바로 나와요 🎙️',
+    tut_2:'특별히 확인하고 싶은 게 있다면 입력해보세요.<br>단일 악기를 점검할 땐 SOLO를 눌러주세요 🎸',
+    tut_3:'오디오 인터페이스로 믹스 소스를 직접 연결하면<br>더 정확한 분석이 가능해요 🎛️',
+    tut_4:'현장 환경을 저장해두면 매번 AI에 전달돼요.<br>고정 메모에 특이사항도 적어두세요 📝',
+    tut_5:'내 믹스 스타일을 설정하면 조언이 달라져요 🎚️',
+    tut_6:'입력소스가 너무 작을 땐 WET 모드를 사용해보세요 🔊',
+    tut_7_android:'앱 형태로 설치하면 더 편리하게 사용할 수 있어요 📲<br>Chrome 메뉴에서 <b>\'앱 설치\'</b>를 눌러주세요!',
+    tut_7_ios:'앱 형태로 설치하면 더 편리하게 사용할 수 있어요 📲<br>Safari 공유 버튼에서 <b>\'홈 화면에 추가\'</b>를 눌러주세요!',
+    tut_7_desktop:'앱 형태로 설치하면 더 편리하게 사용할 수 있어요 💻<br>Chrome 주소창 오른쪽 <b>설치 아이콘</b>을 눌러주세요!',
+    tut_8:'준비 완료예요! 즐거운 믹싱 되세요 🎉',
+    ai_prompt:`첨부된 5초 오디오를 듣고 믹스 엔지니어에게 조언해주세요.
+
+규칙:
+- 조용하거나 악기,보컬 모두 감지되지 않으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
+- 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")
+- 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")
+- 전체 3~4줄 이내, 간결하게
+- 문제 없으면: "지금 믹스 완벽해요 🎚️" 한 줄만`,
+  },
+  en: {
+    lamp_idle:'IDLE', lamp_active:'LISTENING', lamp_rec:'RECORDING', lamp_analyze:'ANALYZING', lamp_error:'ERROR',
+    rec_mode_label:'Rec Mode',
+    hint_placeholder:'What to analyze?',
+    empty_text:'Tap MAX AI to analyze<br>a 5-second mix',
+    advice_title:'ADVICE',
+    advice_notice:'⚠️All advice is tailored for live PA environments',
+    howl_title:'Feedback Detected', howl_last:'Last Feedback', howl_near:'around', howl_at:'detected',
+    settings_title:'SETTINGS',
+    sec_device:'Input Device', sec_model:'AI Model', sec_space:'Venue',
+    sec_mix:'Mix Style', sec_memo:'Session Notes', sec_help:'Help', sec_backup:'Backup',
+    device_default:'Default Mic', device_hint:'Open the LIVE tab to load the device list', device_mic_n:'Mic ',
+    space_type_label:'Venue Type', space_live_pa:'Live PA', space_studio:'Studio',
+    space_size_label:'Venue Size', space_size_0:'Small Indoor', space_size_1:'Medium Indoor', space_size_2:'Large/Outdoor',
+    space_reverb_label:'Reflections', space_reverb_0:'Low', space_reverb_1:'Medium', space_reverb_2:'High',
+    space_sub_label:'Subwoofer', space_sub_0:'None', space_sub_1:'Small', space_sub_2:'Large',
+    space_delay_label:'Delay Speakers', space_delay_0:'None', space_delay_1:'Some', space_delay_2:'Full Cover',
+    space_fb_label:'Feedback Margin', space_fb_0:'Tight', space_fb_1:'Normal', space_fb_2:'Relaxed',
+    space_memo_placeholder:'Fixed notes about this venue...', space_preset_select:'— Select Preset —',
+    space_preset_delete:'Delete', space_preset_save:'Save current venue as preset',
+    mix_type_label:'Event Type', mix_type_music:'Music', mix_type_speech:'Speech', mix_type_mixed:'Mixed',
+    mix_mixed_hint:'Both music & speech preferences are applied.',
+    vocal_config_label:'Vocal Setup', vocal_none:'None', vocal_yes:'Yes', vocal_leader:'Lead+BVs',
+    density_label:'Sound Density', density_0:'Thick', density_1:'Neutral', density_2:'Clean',
+    vocal_tone_label:'Vocal Tone', vocal_tone_0:'Warm', vocal_tone_1:'Neutral', vocal_tone_2:'Clear',
+    vocal_weight_label:'Vocal Weight', vocal_weight_0:'Band-forward', vocal_weight_1:'Balanced', vocal_weight_2:'Vocal-forward',
+    low_feel_label:'Low End Feel', low_feel_0:'Tight', low_feel_1:'Neutral', low_feel_2:'Full',
+    drum_punch_label:'Drum Punch', drum_punch_0:'Natural', drum_punch_1:'Neutral', drum_punch_2:'Punchy',
+    clarity_label:'Speech Clarity', clarity_0:'Natural', clarity_1:'Neutral', clarity_2:'Max Clarity',
+    memo_placeholder:'Session notes (not saved)...', memo_reset:'Reset',
+    tutorial_restart:'Restart Tutorial',
+    backup_export:'📤 Export', backup_import:'📥 Import',
+    modal_preset_title:'Preset Name', modal_preset_placeholder:'e.g. Church Sunday', modal_cancel:'Cancel', modal_save:'Save',
+    alert_saved:'Saved ✓', alert_import_ok:'Settings loaded ✓',
+    alert_import_err:'Could not read file. Please verify it is valid JSON.',
+    alert_device_err:'Permission required to use this microphone',
+    preset_delete_confirm:'Delete "{name}" preset?',
+    status_rec:'Recording for 5s...', status_rec_n:'Recording {n}s...', status_sending:'Sending to AI...', status_analyzing:'Analyzing...',
+    err_mic_perm:'Please allow microphone access.\niOS: Settings > Safari > Microphone\nAndroid: Settings > Chrome > Site Settings > Microphone',
+    err_mic_notfound:'Microphone not found.\nPlease check your device connection.',
+    err_mic_general:'Microphone permission is required.\nPlease allow microphone in browser settings.',
+    err_empty:'Response was empty', err_general:'An error occurred',
+    tut_next:'Next →', tut_start:'Let\'s go! 🎉', tut_skip:'Skip',
+    tut_0:'Welcome to Live Max AI! 👋<br>Just a couple of things before you start!',
+    tut_1:'Press the record button to capture 5 seconds of audio and get AI advice 🎙️',
+    tut_2:'Type what you\'d like to check.<br>Use SOLO mode for a single instrument 🎸',
+    tut_3:'Connect your mix via audio interface<br>for more accurate analysis 🎛️',
+    tut_4:'Save your venue environment to pass it to AI every time.<br>Add notes about the space 📝',
+    tut_5:'Set your mix style to personalise the AI advice 🎚️',
+    tut_6:'Use WET mode if the input signal is too quiet 🔊',
+    tut_7_android:'Install as an app for a better experience 📲<br>Tap <b>\'Install App\'</b> in the Chrome menu!',
+    tut_7_ios:'Install as an app for a better experience 📲<br>Tap <b>\'Add to Home Screen\'</b> in Safari!',
+    tut_7_desktop:'Install as an app for a better experience 💻<br>Click the <b>install icon</b> in the Chrome address bar!',
+    tut_8:'You\'re all set! Enjoy your mix! 🎉',
+    ai_prompt:`Listen to the attached 5-second audio and advise the mix engineer.
+
+Rules:
+- If quiet or no instruments/vocals detected: "Quiet environment 🎧 Play the mix and press again!"
+- First line: one positive summary (e.g. "Let's bring out the vocals!")
+- Following lines: 1–3 specific actions (e.g. "💡 Vocals +2dB", "💡 Kick 80Hz -1.5dB")
+- Keep to 3–4 lines total, concise
+- If no issues: "Mix sounds great right now 🎚️" (one line only)`,
+  },
+};
+function t(key) { return I18N[state.lang]?.[key] ?? I18N.ko[key] ?? key; }
+
+function toggleLang() {
+  state.lang = state.lang === 'ko' ? 'en' : 'ko';
+  localStorage.setItem('livemaxai_lang', state.lang);
+  applyLang();
+}
+
+function applyLang() {
+  const L = I18N[state.lang];
+  document.documentElement.lang = state.lang;
+
+  // Update KO/EN toggle visual
+  const koBtn = document.getElementById('lang-ko-btn');
+  const enBtn = document.getElementById('lang-en-btn');
+  if (koBtn && enBtn) {
+    const isKo = state.lang === 'ko';
+    koBtn.style.background = isKo ? 'var(--accent)' : 'transparent';
+    koBtn.style.color      = isKo ? '#000' : 'var(--muted2)';
+    enBtn.style.background = !isKo ? 'var(--accent)' : 'transparent';
+    enBtn.style.color      = !isKo ? '#000' : 'var(--muted2)';
+  }
+
+  // data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (L[key] === undefined) return;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = L[key];
+    } else if (el.tagName === 'OPTION') {
+      el.textContent = L[key];
+    } else {
+      el.innerHTML = L[key];
+    }
+  });
+
+  // Preset select placeholder option (rendered dynamically)
+  const spSel = document.getElementById('space-preset-select');
+  if (spSel && spSel.options[0]) spSel.options[0].textContent = L.space_preset_select;
+
+  // Current lamp label
+  const lampEl = document.getElementById('lamp-label');
+  if (lampEl) {
+    const cur = lampEl.dataset.lampState || 'idle';
+    lampEl.textContent = L['lamp_' + cur] || lampEl.textContent;
+  }
+}
+
 // ── STATE ──
 const state = {
   soloMode: false,
@@ -1596,6 +1808,7 @@ const state = {
   wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
   userHint: '',
+  lang: localStorage.getItem('livemaxai_lang') || 'ko',
 };
 
 const PHONE_CORRECTION = [8,8,7,6,5,4,3,2,1,0,0,-1,-1,-1,-2,-2,-2,-2,-3,-3,-3,-3,-4,-4,-4,-4,-4,-5,-5,-5,-5,-5];
@@ -1638,9 +1851,11 @@ function closeSettingsOnBg(e) {
 }
 
 // ── LAMP ──
-function setLamp(mode, label) {
+function setLamp(mode, labelKey) {
   document.getElementById('lamp').className = 'lamp' + (mode ? ' ' + mode : '');
-  document.getElementById('lamp-label').textContent = label;
+  const lampEl = document.getElementById('lamp-label');
+  lampEl.dataset.lampState = labelKey;
+  lampEl.textContent = t('lamp_' + labelKey);
 }
 
 // ── AUDIO INIT ──
@@ -1678,18 +1893,18 @@ async function initAudio(deviceId, existingStream) {
     state.compressor.connect(state.lowshelf);
     state.lowshelf.connect(state.analyser);
 
-    setLamp('active', '청음중');
+    setLamp('active', 'active');
     await acquireWakeLock();
     await loadDevices();
     return true;
   } catch(e) {
-    setLamp('', '오류');
+    setLamp('', 'error');
     if (e.name === 'NotAllowedError') {
-      showError('마이크 권한을 허용해주세요.\niOS: 설정 > Safari > 마이크\nAndroid: 설정 > Chrome > 사이트 설정 > 마이크');
+      showError(t('err_mic_perm'));
     } else if (e.name === 'NotFoundError') {
-      showError('마이크를 찾을 수 없어요.\n장치 연결을 확인해주세요.');
+      showError(t('err_mic_notfound'));
     } else {
-      showError('마이크 접근 권한이 필요합니다.\n브라우저 설정에서 마이크를 허용해주세요.');
+      showError(t('err_mic_general'));
     }
     return false;
   }
@@ -1731,7 +1946,7 @@ function renderDeviceSelect() {
   if (!sel) return;
   sel.innerHTML = state.devices.map(d =>
     `<option value="${d.deviceId}" ${d.deviceId === state.deviceId ? 'selected' : ''}>
-      ${d.label || '마이크 ' + (state.devices.indexOf(d)+1)}
+      ${d.label || t('device_mic_n') + (state.devices.indexOf(d)+1)}
     </option>`
   ).join('');
 }
@@ -1754,12 +1969,12 @@ async function changeDevice(deviceId) {
           video: false
         });
       } catch(e2) {
-        showError('이 마이크를 사용하려면 권한이 필요해요');
+        showError(t('alert_device_err'));
         renderDeviceSelect(); // revert UI to current device
         return;
       }
     } else {
-      showError('이 마이크를 사용하려면 권한이 필요해요');
+      showError(t('alert_device_err'));
       renderDeviceSelect(); // revert UI to current device
       return;
     }
@@ -1951,8 +2166,8 @@ function detectHowling(bandVals, rawVals) {
       bar.classList.add('dismissed');
       const title = bar.querySelector('.howl-bar-title');
       const timeEl = document.getElementById('howl-bar-time');
-      if (title) title.textContent = '마지막 하울링';
-      if (timeEl) { const n=new Date(); timeEl.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+' 감지'; }
+      if (title) title.textContent = t('howl_last');
+      if (timeEl) { const n=new Date(); timeEl.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+' '+t('howl_at'); }
     }
   }
 }
@@ -1961,8 +2176,8 @@ function showHowlBar(freqStr) {
   const freqEl = document.getElementById('howl-bar-freq');
   const title = bar?.querySelector('.howl-bar-title');
   if (!bar) return;
-  if (title) title.textContent = '하울링 감지';
-  if (freqEl) freqEl.textContent = freqStr + ' 부근';
+  if (title) title.textContent = t('howl_title');
+  if (freqEl) freqEl.textContent = freqStr + ' ' + t('howl_near');
   document.getElementById('howl-bar-time').textContent = '';
   bar.classList.remove('dismissed');
   bar.classList.add('show');
@@ -1985,68 +2200,134 @@ const TARGET_CURVE = [
 ];
 
 const RT_MESSAGES = {
-  low_excess: [
-    "킥이 너무 신나있어요 🥁 저역 살짝 눌러볼까요?",
-    "베이스가 방을 점령했네요! 80Hz 부근 확인해보세요",
-    "저역이 파티 중이에요 🎉 조금만 진정시켜볼까요?",
-    "킥 드럼이 보컬을 이기고 있어요, 한 번 잡아볼까요?"
-  ],
-  low_lack: [
-    "저역이 좀 허전한데요? 킥에 힘 실어볼까요! 💪",
-    "베이스가 숨어있어요~ 꺼내줄 시간이에요",
-    "바닥이 비어있어요! 저역에 에너지 좀 더 줘볼까요?"
-  ],
-  lowmid_excess: [
-    "뭔가 먹먹하죠? 저중역이 뭉쳐있어요 🫧",
-    "200-400Hz 대역이 좀 과해요, 보컬이 묻힐 수 있어요",
-    "소리가 박스 안에 갇힌 느낌? 저중역 한번 열어봐요!",
-    "탁한 느낌 있죠? 250Hz 부근 살짝 빼볼까요?"
-  ],
-  lowmid_lack: [
-    "소리가 좀 얇은 것 같아요~ 저중역에 살 좀 붙여볼까요?",
-    "악기들이 붕 떠있는 느낌, 중저역 채워볼까요?"
-  ],
-  mid_excess: [
-    "중역이 앞으로 너무 튀어나왔어요! 한 발 물러나볼까요?",
-    "1kHz 부근이 코를 찌르는 느낌이에요 👃 살짝 빼보세요",
-    "보컬이 너무 날카롭진 않나요? 중역 체크해봐요",
-    "귀가 좀 피곤하다면 1-2kHz 확인해보세요 👂"
-  ],
-  mid_lack: [
-    "보컬이 안 들려요! 중역에 에너지 넣어볼까요? 🎤",
-    "악기 선명도가 떨어지는 것 같아요, 중역 올려볼까요?",
-    "소리가 멀리서 들리는 느낌? 중역을 앞으로 당겨봐요!"
-  ],
-  highmid_excess: [
-    "치찰음이 쏘는 느낌 있죠? 3-5kHz 살짝 빼볼게요 ✂️",
-    "고중역이 좀 공격적이에요! 귀 보호해줄 시간이에요 😅",
-    "4kHz 부근이 너무 앞에 있어요, 한 걸음 뒤로!",
-    "좀 쌔한 느낌? 고중역 살짝 다듬어볼까요?"
-  ],
-  highmid_lack: [
-    "악기 어택감이 좀 죽어있어요~ 고중역 살려볼까요? ⚡",
-    "선명도가 부족해요! 3kHz 부근 올려보세요",
-    "소리가 뭉툭한 느낌, 고중역에 엣지 줘볼까요?"
-  ],
-  high_excess: [
-    "치이익~ 고역이 좀 날카롭네요! 8kHz 이상 살짝 내려봐요",
-    "에어가 너무 많아요 🌬️ 고역 다듬어볼까요?",
-    "심벌이 귀를 찌르고 있어요, 잡아볼까요? 🎵"
-  ],
-  high_lack: [
-    "소리가 답답한 느낌? 고역에 공기 좀 넣어볼까요! 🌟",
-    "심벌이 안 보여요~ 에어 대역 살려볼까요?",
-    "소리가 어둡네요, 고역을 열어볼까요? ✨",
-    "하이가 없으면 심심하죠! 8kHz 이상 올려봐요"
-  ],
-  balanced: [
-    "지금 이 믹스 꽤 괜찮은데요? 🎚️",
-    "엔지니어 오늘 귀 열려있네요 👂✨",
-    "균형 잡힌 소리예요! 이대로 가요 💪",
-    "MaxAI도 지금 이 믹스 좋아요 🎶",
-    "완벽하진 않아도 충분히 좋아요, 유지하세요!",
-    "오늘 믹스 안정적이에요, 잘 하고 계세요 🙌"
-  ]
+  ko: {
+    low_excess: [
+      "킥이 너무 신나있어요 🥁 저역 살짝 눌러볼까요?",
+      "베이스가 방을 점령했네요! 80Hz 부근 확인해보세요",
+      "저역이 파티 중이에요 🎉 조금만 진정시켜볼까요?",
+      "킥 드럼이 보컬을 이기고 있어요, 한 번 잡아볼까요?"
+    ],
+    low_lack: [
+      "저역이 좀 허전한데요? 킥에 힘 실어볼까요! 💪",
+      "베이스가 숨어있어요~ 꺼내줄 시간이에요",
+      "바닥이 비어있어요! 저역에 에너지 좀 더 줘볼까요?"
+    ],
+    lowmid_excess: [
+      "뭔가 먹먹하죠? 저중역이 뭉쳐있어요 🫧",
+      "200-400Hz 대역이 좀 과해요, 보컬이 묻힐 수 있어요",
+      "소리가 박스 안에 갇힌 느낌? 저중역 한번 열어봐요!",
+      "탁한 느낌 있죠? 250Hz 부근 살짝 빼볼까요?"
+    ],
+    lowmid_lack: [
+      "소리가 좀 얇은 것 같아요~ 저중역에 살 좀 붙여볼까요?",
+      "악기들이 붕 떠있는 느낌, 중저역 채워볼까요?"
+    ],
+    mid_excess: [
+      "중역이 앞으로 너무 튀어나왔어요! 한 발 물러나볼까요?",
+      "1kHz 부근이 코를 찌르는 느낌이에요 👃 살짝 빼보세요",
+      "보컬이 너무 날카롭진 않나요? 중역 체크해봐요",
+      "귀가 좀 피곤하다면 1-2kHz 확인해보세요 👂"
+    ],
+    mid_lack: [
+      "보컬이 안 들려요! 중역에 에너지 넣어볼까요? 🎤",
+      "악기 선명도가 떨어지는 것 같아요, 중역 올려볼까요?",
+      "소리가 멀리서 들리는 느낌? 중역을 앞으로 당겨봐요!"
+    ],
+    highmid_excess: [
+      "치찰음이 쏘는 느낌 있죠? 3-5kHz 살짝 빼볼게요 ✂️",
+      "고중역이 좀 공격적이에요! 귀 보호해줄 시간이에요 😅",
+      "4kHz 부근이 너무 앞에 있어요, 한 걸음 뒤로!",
+      "좀 쌔한 느낌? 고중역 살짝 다듬어볼까요?"
+    ],
+    highmid_lack: [
+      "악기 어택감이 좀 죽어있어요~ 고중역 살려볼까요? ⚡",
+      "선명도가 부족해요! 3kHz 부근 올려보세요",
+      "소리가 뭉툭한 느낌, 고중역에 엣지 줘볼까요?"
+    ],
+    high_excess: [
+      "치이익~ 고역이 좀 날카롭네요! 8kHz 이상 살짝 내려봐요",
+      "에어가 너무 많아요 🌬️ 고역 다듬어볼까요?",
+      "심벌이 귀를 찌르고 있어요, 잡아볼까요? 🎵"
+    ],
+    high_lack: [
+      "소리가 답답한 느낌? 고역에 공기 좀 넣어볼까요! 🌟",
+      "심벌이 안 보여요~ 에어 대역 살려볼까요?",
+      "소리가 어둡네요, 고역을 열어볼까요? ✨",
+      "하이가 없으면 심심하죠! 8kHz 이상 올려봐요"
+    ],
+    balanced: [
+      "지금 이 믹스 꽤 괜찮은데요? 🎚️",
+      "엔지니어 오늘 귀 열려있네요 👂✨",
+      "균형 잡힌 소리예요! 이대로 가요 💪",
+      "MaxAI도 지금 이 믹스 좋아요 🎶",
+      "완벽하진 않아도 충분히 좋아요, 유지하세요!",
+      "오늘 믹스 안정적이에요, 잘 하고 계세요 🙌"
+    ]
+  },
+  en: {
+    low_excess: [
+      "Kick has too much energy 🥁 Try pulling back the low end",
+      "Bass is taking over the room! Check around 80Hz",
+      "Low-end party going on 🎉 Let's calm it down a touch",
+      "Kick is overpowering the vocals — rein it in?"
+    ],
+    low_lack: [
+      "Low end feels a bit empty 💪 Give the kick some body!",
+      "Bass is hiding ~ time to bring it forward",
+      "The floor is bare! Let's add some low-end energy"
+    ],
+    lowmid_excess: [
+      "Sounds a bit muddy? Low-mids are clumping up 🫧",
+      "200–400Hz feels heavy — vocals might get buried",
+      "Boxed-in sound? Try opening up the low-mids!",
+      "Thick and murky? A small cut around 250Hz might help"
+    ],
+    lowmid_lack: [
+      "Mix feels a bit thin ~ add some body to the low-mids?",
+      "Instruments feel floaty — fill in that low-mid foundation"
+    ],
+    mid_excess: [
+      "Mids are pushing too far forward! Step back a little",
+      "Something poking around 1kHz 👃 Try a small cut",
+      "Vocals sounding harsh? Check the mids",
+      "Ears getting tired? Look at 1–2kHz 👂"
+    ],
+    mid_lack: [
+      "Vocals getting lost! Add some mid energy 🎤",
+      "Instrument definition feels soft — try lifting the mids",
+      "Mix sounds distant? Pull the mids forward!"
+    ],
+    highmid_excess: [
+      "Sibilance stinging a bit? Trim 3–5kHz ✂️",
+      "High-mids are a bit aggressive! Protect those ears 😅",
+      "4kHz is too forward — dial it back!",
+      "Feeling harsh? Smooth out the upper mids"
+    ],
+    highmid_lack: [
+      "Instrument attack feels dull ~ bring back the high-mids ⚡",
+      "Lacking definition! Try lifting around 3kHz",
+      "Sound feels blunt — add some edge to the upper mids"
+    ],
+    high_excess: [
+      "Hissy highs! Ease back above 8kHz",
+      "Too much air 🌬️ Tame the top end a bit",
+      "Cymbals are piercing — rein them in 🎵"
+    ],
+    high_lack: [
+      "Mix feels a bit dark 🌟 Add some air to the highs!",
+      "Cymbals disappearing ~ revive that air band",
+      "Sound is dark — open up the highs ✨",
+      "Missing that shimmer! Try lifting above 8kHz"
+    ],
+    balanced: [
+      "This mix is sounding pretty good! 🎚️",
+      "Engineer's ears are dialled in today 👂✨",
+      "Nice balance! Keep it going 💪",
+      "MaxAI is vibing with this mix 🎶",
+      "Not perfect, but solid — keep it there!",
+      "Mix is stable today, nice work 🙌"
+    ]
+  }
 };
 
 let bandAccum = new Array(32).fill(0);
@@ -2090,7 +2371,7 @@ function checkBalance(bandVals) {
     else                   category = excess ? 'high_excess'    : 'high_lack';
   }
 
-  const msgs = RT_MESSAGES[category];
+  const msgs = (RT_MESSAGES[state.lang] || RT_MESSAGES.ko)[category];
   const msg = msgs[Math.floor(Math.random() * msgs.length)];
   if (msg === lastRtLine) return;
   lastRtLine = msg;
@@ -2116,7 +2397,7 @@ function startRecording() {
 
   const btn = document.getElementById('mic-btn');
   btn.classList.add('recording');
-  setLamp('rec', '녹음중');
+  setLamp('rec', 'rec');
   hideEmptyState();
 
   const listEl = document.getElementById('analysis-list');
@@ -2132,7 +2413,7 @@ function startRecording() {
     </div>
     <div class="thinking-card" id="status-${num}">
       <span id="status-icon-${num}" style="font-size:var(--md)">🔴</span>
-      <span id="status-text-${num}">5초간 녹음 중...</span>
+      <span id="status-text-${num}">${t('status_rec')}</span>
       <div class="thinking-dots" id="status-dots-${num}" style="display:none"><span></span><span></span><span></span></div>
     </div>`;
   listEl.insertBefore(g, listEl.firstChild);
@@ -2174,12 +2455,12 @@ function startRecording() {
       const icon = document.getElementById('status-icon-'+num);
       const txt  = document.getElementById('status-text-'+num);
       if (icon) icon.textContent = '📡';
-      if (txt)  txt.textContent  = 'AI에 전송 중...';
+      if (txt)  txt.textContent  = t('status_sending');
       recorder.stop();
     } else {
       document.getElementById('countdown').textContent = sec;
       const txt = document.getElementById('status-text-'+num);
-      if (txt) txt.textContent = sec+'초간 녹음 중...';
+      if (txt) txt.textContent = t('status_rec_n').replace('{n}', sec);
     }
   }, 1000);
 }
@@ -2188,14 +2469,14 @@ async function onRecordingStop(num) {
   state.isRecording = false;
   document.getElementById('mic-btn').classList.remove('recording');
   document.getElementById('mic-btn').classList.add('analyzing');
-  setLamp('analyze', '분석중');
+  setLamp('analyze', 'analyze');
   state.isAnalyzing = true;
 
   const icon = document.getElementById('status-icon-'+num);
   const txt  = document.getElementById('status-text-'+num);
   const dots = document.getElementById('status-dots-'+num);
   if (icon) icon.textContent = '🔍';
-  if (txt)  txt.textContent  = '분석 중입니다...';
+  if (txt)  txt.textContent  = t('status_analyzing');
   if (dots) dots.style.display = 'flex';
 
   const blob = new Blob(state.audioChunks, { type: AUDIO_MIME });
@@ -2203,7 +2484,7 @@ async function onRecordingStop(num) {
 
   state.isAnalyzing = false;
   document.getElementById('mic-btn').classList.remove('analyzing');
-  setLamp('active', '청음중');
+  setLamp('active', 'active');
   startGeminiCooldown(25);
 }
 
@@ -2213,7 +2494,8 @@ function startGeminiCooldown(sec) {
   btn.style.opacity = '0.5';
   btn.style.pointerEvents = 'none';
   let remaining = sec;
-  label.textContent = 'MAX AI (' + remaining + '초)';
+  const secSuffix = () => state.lang === 'en' ? remaining + 's)' : remaining + '초)';
+  label.textContent = 'MAX AI (' + secSuffix();
   const timer = setInterval(() => {
     remaining--;
     if (remaining <= 0) {
@@ -2222,7 +2504,7 @@ function startGeminiCooldown(sec) {
       btn.style.pointerEvents = '';
       label.textContent = 'MAX AI';
     } else {
-      label.textContent = 'MAX AI (' + remaining + '초)';
+      label.textContent = 'MAX AI (' + secSuffix();
     }
   }, 1000);
 }
@@ -2260,7 +2542,7 @@ async function analyzeWithGemini(audioBlob, num) {
     let spaceSection = '';
     if (!state.soloMode) {
       if ((env.mode || 'live') === 'studio') {
-        spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통';
+        spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통, never mention room acoustics, reflections, or space characteristics in advice';
          mixSection = mixSection
           .replace(
           'You are a live PA sound engineer advisor.',
@@ -2286,7 +2568,7 @@ async function analyzeWithGemini(audioBlob, num) {
 
     // 3. 입력 소스
     const sourceInfo = state.source === 'phone'
-       ? 'Input: Smartphone microphone (low-cut correction mode). Note: low-end below 200Hz may be underrepresented, mid-high around 2.5~5kHz may appear stronger than actual, and vocals may appear more prominent than they actually are. Do not over-advise cuts in these ranges unless clearly problematic. Focus advice on room tuning, overall mix balance, frequency distribution, and rather than precise EQ adjustments.' 
+       ? 'Input: Smartphone microphone (low-cut correction mode). Note: low-end below 200Hz may be underrepresented, mid-high around 2.5~5kHz may appear stronger than actual, and vocals may appear more prominent than they actually are. Do not over-advise cuts in these ranges unless clearly problematic. Focus advice on Room Acoustics, overall mix balance, frequency distribution, and rather than precise EQ adjustments. Never mention or reference the microphone type in advice.' 
        : 'Input: Audio interface (flat, accurate frequency response)';
 
     // 5. 즉석 메모
@@ -2304,14 +2586,7 @@ async function analyzeWithGemini(audioBlob, num) {
 
     const prompt = `${contextBlock}${soloNote}
 
-첨부된 5초 오디오를 듣고 믹스 엔지니어에게 조언해주세요.
-
-규칙:
-- 조용하거나 악기,보컬 모두 감지되지 않으면: "조용한 환경이에요 🎧 믹스를 틀고 눌러주세요!"
-- 첫 줄: 긍정형 한 줄 요약 (예: "보컬을 살려볼까요?")
-- 둘째 줄부터: 구체적 액션 1~3개 (예: "💡 보컬 +2dB", "💡 킥 80Hz -1.5dB")
-- 전체 3~4줄 이내, 간결하게
-- 문제 없으면: "지금 믹스 완벽해요 🎚️" 한 줄만`;
+${t('ai_prompt')}`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
@@ -2334,14 +2609,14 @@ async function analyzeWithGemini(audioBlob, num) {
     if (data.error) throw new Error(data.error.message);
     const parts = data.candidates?.[0]?.content?.parts||[];
     const text = parts.filter(p=>p.text && !p.thought).map(p=>p.text).join('').trim();
-    if (!text) throw new Error('응답이 비어있어요');
+    if (!text) throw new Error(t('err_empty'));
     const lines = text.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
     const result = { problem: lines[0]||'분석 완료', solutions: lines.slice(1) };
     if (statusEl) statusEl.remove();
     renderAnalysisCard(groupEl, result);
   } catch(err) {
     if (statusEl) {
-      statusEl.innerHTML = `<span style="font-size:var(--md)">⚠️</span><span style="color:var(--danger);font-size:var(--sm);margin-left:8px">${err.message||'오류가 발생했어요'}</span>`;
+      statusEl.innerHTML = `<span style="font-size:var(--md)">⚠️</span><span style="color:var(--danger);font-size:var(--sm);margin-left:8px">${err.message||t('err_general')}</span>`;
       const dots = statusEl.querySelector('.thinking-dots');
       if (dots) dots.remove();
     }
@@ -2405,7 +2680,7 @@ function confirmPreset() {
   closeModal(); renderSpacePresets();
 }
 function saveSettings() {
-  saveToStorage(); alert('저장됐어요 ✓');
+  saveToStorage(); alert(t('alert_saved'));
 }
 
 function exportSettings() {
@@ -2443,9 +2718,9 @@ function importSettings(event) {
       if (data.mixPref) { state.mixPref = { ...state.mixPref, ...data.mixPref }; localStorage.setItem('mix_pref', JSON.stringify(state.mixPref)); }
       saveToStorage();
       renderSettings();
-      alert('설정을 불러왔어요 ✓');
+      alert(t('alert_import_ok'));
     } catch(err) {
-      alert('파일을 읽을 수 없어요. JSON 형식인지 확인해주세요.');
+      alert(t('alert_import_err'));
     }
   };
   reader.readAsText(file);
@@ -2516,7 +2791,7 @@ function renderSpaceEnv() {
   if (modeGroup) {
     const currentMode = env.mode || 'live';
     modeGroup.querySelectorAll('.seg-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.textContent === (currentMode === 'studio' ? '스튜디오' : '라이브 PA'));
+      btn.classList.toggle('active', btn.dataset.val === currentMode);
     });
     const liveFields = document.getElementById('space-live-fields');
     if (liveFields) liveFields.style.display = currentMode === 'studio' ? 'none' : '';
@@ -2526,7 +2801,7 @@ function renderSpaceEnv() {
   Object.entries(segMap).forEach(([key, groupId]) => {
     const g = document.getElementById(groupId);
     if (!g) return;
-    g.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === env[key]));
+    g.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.val === env[key]));
   });
   const memoEl = document.getElementById('space-memo');
   if (memoEl) memoEl.value = env.memo || '';
@@ -2536,7 +2811,7 @@ function renderSpacePresets() {
   const sel = document.getElementById('space-preset-select');
   if (!sel) return;
   const cur = sel.value;
-  sel.innerHTML = '<option value="">— 프리셋 선택 —</option>' +
+  sel.innerHTML = `<option value="">${t('space_preset_select')}</option>` +
     state.spacePresets.map((p, i) => `<option value="${i}"${String(i)===cur?' selected':''}>${p.name}</option>`).join('');
 }
 function saveSpacePreset() {
@@ -2555,7 +2830,7 @@ function deleteSpacePreset() {
   const sel = document.getElementById('space-preset-select');
   const i = Number(sel?.value);
   if (sel?.value === '' || !state.spacePresets[i]) return;
-  if (!confirm(`"${state.spacePresets[i].name}" 프리셋을 삭제할까요?`)) return;
+  if (!confirm(t('preset_delete_confirm').replace('{name}', state.spacePresets[i].name))) return;
   state.spacePresets.splice(i, 1);
   localStorage.setItem('space_presets', JSON.stringify(state.spacePresets));
   renderSpacePresets();
@@ -2589,9 +2864,8 @@ function renderMixPref() {
   const p = state.mixPref;
   const typeGroup = document.getElementById('seg-mix-type');
   if (typeGroup) {
-    const typeMap = {'음악 중심':'music','혼합':'mixed','스피치 중심':'speech'};
     typeGroup.querySelectorAll('.seg-btn').forEach(btn => {
-      btn.classList.toggle('active', typeMap[btn.textContent] === p.type);
+      btn.classList.toggle('active', btn.dataset.val === p.type);
     });
   }
   const musicFields = document.getElementById('mix-music-fields');
@@ -2608,9 +2882,8 @@ function renderMixPref() {
   if (vocalConfigRow) vocalConfigRow.style.display = showMusic ? 'flex' : 'none';
   const vocal = p.vocal || 'yes';
   if (vocalFields) vocalFields.style.display = (showMusic && vocal !== 'none') ? 'block' : 'none';
-  const vocalTextMap = { none:'없음', yes:'있음', leader:'보컬+리더' };
   const vcg = document.getElementById('seg-vocal-config');
-  if (vcg) vcg.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === vocalTextMap[vocal]));
+  if (vcg) vcg.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.val === vocal));
   const prefMap = {
     density:'seg-density', vocalTone:'seg-vocal-tone', vocalWeight:'seg-vocal-weight',
     lowFeel:'seg-low-feel', drumPunch:'seg-drum-punch', clarity:'seg-clarity',
@@ -2618,7 +2891,7 @@ function renderMixPref() {
   Object.entries(prefMap).forEach(([key, groupId]) => {
     const g = document.getElementById(groupId);
     if (!g) return;
-    g.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === p[key]));
+    g.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.val === p[key]));
   });
 }
 
@@ -2655,67 +2928,22 @@ function buildAIContext() {
 }
 
 // ── TUTORIAL ──
-const TUTORIAL_STEPS = [
-  {
-    target: null,
-    text: '안녕하세요! Live Max AI를 소개할게요 👋<br>몇 가지만 확인하면 바로 시작할 수 있어요!',
-    settings: false,
-  },
-  {
-    target: '#mic-btn',
-    text: '녹음 버튼을 누르면 5초 녹음 후 AI 조언이 바로 나와요 🎙️',
-    settings: false,
-  },
-  {
-    targets: ['#user-hint-input', '#solo-mix-toggle'],
-    text: '특별히 확인하고 싶은 게 있다면 입력해보세요.<br>단일 악기를 점검할 땐 SOLO를 눌러주세요 🎸',
-    settings: false,
-  },
-  {
-    target: '#setting-section-device',
-    text: '오디오 인터페이스로 믹스 소스를 직접 연결하면<br>더 정확한 분석이 가능해요 🎛️',
-    settings: true,
-    openSection: '#setting-section-device',
-  },
-  {
-    target: '#setting-section-space',
-    text: '현장 환경을 저장해두면 매번 AI에 전달돼요.<br>고정 메모에 특이사항도 적어두세요 📝',
-    settings: true,
-    openSection: '#setting-section-space',
-  },
-  {
-    target: '#setting-section-mix',
-    text: '내 믹스 스타일을 설정하면 조언이 달라져요 🎚️',
-    settings: true,
-    openSection: '#setting-section-mix',
-  },
-  {
-    target: '#dry-wet-toggle',
-    text: '입력소스가 너무 작을 땐 WET 모드를 사용해보세요 🔊',
-    settings: false,
-  },
-  {
-    target: null,
-    text: _tutInstallText(),
-    settings: false,
-  },
-  {
-    target: null,
-    text: '준비 완료예요! 즐거운 믹싱 되세요 🎉',
-    settings: false,
-  },
-];
-
-function _tutInstallText() {
+function getTutorialSteps() {
   const ua = navigator.userAgent;
-  if (/android/i.test(ua)) {
-    return '앱 형태로 설치하면 더 편리하게 사용할 수 있어요 📲<br>Chrome 메뉴에서 <b>\'앱 설치\'</b>를 눌러주세요!';
-  }
-  if (/iphone|ipad|ipod/i.test(ua)) {
-    return '앱 형태로 설치하면 더 편리하게 사용할 수 있어요 📲<br>Safari 공유 버튼에서 <b>\'홈 화면에 추가\'</b>를 눌러주세요!';
-  }
-  return '앱 형태로 설치하면 더 편리하게 사용할 수 있어요 💻<br>Chrome 주소창 오른쪽 <b>설치 아이콘</b>을 눌러주세요!';
+  const installKey = /android/i.test(ua) ? 'tut_7_android' : /iphone|ipad|ipod/i.test(ua) ? 'tut_7_ios' : 'tut_7_desktop';
+  return [
+    { target: null,                                        text: t('tut_0'), settings: false },
+    { target: '#mic-btn',                                  text: t('tut_1'), settings: false },
+    { targets: ['#user-hint-input','#solo-mix-toggle'],    text: t('tut_2'), settings: false },
+    { target: '#setting-section-device',                   text: t('tut_3'), settings: true, openSection: '#setting-section-device' },
+    { target: '#setting-section-space',                    text: t('tut_4'), settings: true, openSection: '#setting-section-space' },
+    { target: '#setting-section-mix',                      text: t('tut_5'), settings: true, openSection: '#setting-section-mix' },
+    { target: '#dry-wet-toggle',                           text: t('tut_6'), settings: false },
+    { target: null,                                        text: t(installKey), settings: false },
+    { target: null,                                        text: t('tut_8'), settings: false },
+  ];
 }
+
 
 let _tutStep = 0;
 
@@ -2736,8 +2964,9 @@ function _tutShow() {
 }
 
 function _tutRender(idx) {
-  const step = TUTORIAL_STEPS[idx];
-  const isLast = idx === TUTORIAL_STEPS.length - 1;
+  const steps = getTutorialSteps();
+  const step = steps[idx];
+  const isLast = idx === steps.length - 1;
 
   // Settings panel
   const overlay = document.getElementById('settings-overlay');
@@ -2770,8 +2999,9 @@ function _tutRender(idx) {
   }
 
   document.getElementById('tutorial-text').innerHTML = step.text;
-  document.getElementById('tutorial-step-indicator').textContent = (idx + 1) + ' / ' + TUTORIAL_STEPS.length;
-  document.getElementById('tutorial-next-btn').textContent = isLast ? '시작하기 🎉' : '다음 →';
+  document.getElementById('tutorial-step-indicator').textContent = (idx + 1) + ' / ' + getTutorialSteps().length;
+  document.getElementById('tutorial-next-btn').textContent = isLast ? t('tut_start') : t('tut_next');
+  document.getElementById('tutorial-skip-btn').textContent = t('tut_skip');
   document.getElementById('tutorial-skip-btn').style.display = isLast ? 'none' : 'inline-block';
 
   // Wait for accordion CSS transition (350ms) to finish before measuring rect
@@ -2866,7 +3096,7 @@ function _tutPosition(step) {
 }
 
 function tutorialNext() {
-  if (_tutStep >= TUTORIAL_STEPS.length - 1) { _tutDone(); return; }
+  if (_tutStep >= getTutorialSteps().length - 1) { _tutDone(); return; }
   _tutStep++;
   _tutRender(_tutStep);
 }
@@ -2886,6 +3116,7 @@ function _tutDone() {
 // ── INIT ──
 loadSettings();
 initSpacePresets();
+applyLang();
 updateSourceUI();
 updateDryWetUI();
 updateSoloMixUI();
