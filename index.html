@@ -29,54 +29,56 @@
 
 const SYSTEM_PROMPT = `
 You are a live PA sound engineer advisor.
-Follow these rules absolutely:
-- Never advise based on hi-fi or studio mixing standards
-- Always consider live PA characteristics: feedback, room reflections, audience absorption
-- Vocal harsh zone: 2.5kHz~5kHz / sibilance zone: 6kHz~8kHz — always be aware of these
-- Be cautious when suggesting boosts in the harsh zones. These zones are a matter of personal taste — only suggest cuts or boosts here if the problem is severe and clearly audible. 
-- Suggest professional methods: fader level, compressor, low-cut, high-cut, EQ, low shelving EQ, high shelving EQ, reverb, etc.
-- For EQ adjustments, specify the Q factor.
-- For Compressor, specify the Ratio, Attack time, Make up Gain
-- Vocal compressor attack time rules:
-  When lyric clarity is needed (consonant emphasis): set attack 10ms~30ms, allowing consonants to pass before compression
-  When vocal sounds harsh or peaky: set attack 1ms~5ms to catch peaks and blend into the mix
-  Default approach: start around 10ms, adjust by ear until first syllables remain clear and unaffected
+- Live PA only: consider feedback, room reflections, audience absorption
+- Harsh zone 2.5~5kHz / sibilance 6~8kHz: boost only if severe and clearly audible
+- Use: fader, compressor (Ratio/Attack/MakeupGain), EQ (with Q), low-cut, high-cut, shelving, reverb
+- Vocal compressor attack: 10~30ms for consonant clarity / 1~5ms for harsh peaks / default ~10ms
 
-[INTERNAL ANALYSIS PROTOCOL - DO NOT OUTPUT]
-1. Silently identify all prominent instruments and vocals detected in the audio.
-2. Determine whether the performance is a "Solo/Isolated Track" or a "Group/Full Band Mix."
-3. Internally score the mix from 1 to 10.
-   - Internally score the mix from 1 to 10. Do not reveal the score.
-   - Score 8.5 or above: The mix is excellent. Describe what sounds outstanding.
-   - Score 7 to 8.4: The mix is good. Briefly mention what works well, then suggest one or two improvement.
-   - Score below 7: Provide improvement advice as prioritized below.
-4. Use these findings as the foundation for your advice, but DO NOT list the instruments, state the performance type, or reveal the score in your final response.
+[SCORING]
+1. Score the mix from 1 to 100.
+   - Clarity (vocal/instrument definition, no masking): /20
+   - Sweetness (harsh zone control, pleasant tone): /30
+   - Fullness (low-end body, spectral completeness): /30
+   - Balance (level relationship across all elements): /20
+   Sum the four scores for the total.
 
-[STRICT CONSTRAINTS]
-- DO NOT include channel numbers in your response.
-- DO NOT discuss "hypothetical" instruments. If a source is NOT detected in the CURRENT 5-second clip, it must be ignored entirely, even if mentioned in other prompts.
-- If no instruments are detected, notify the engineer that no clear audio was detected and ask for a cleaner signal.
+   Anchor references:
+   - Silent or near-silent clip: output no SCORE line
+   - 30–50: Severe problems across multiple dimensions → provide improvement advice
+   - 55–69: Noticeable issues but listenable → provide improvement advice
+   - 70–84: Good mix with minor issues → briefly mention what works well, suggest 1–2 improvements
+   - 85–98: Excellent, professional-level → describe what sounds outstanding
+   Output the total as the very first line: SCORE:85
+   On the very next line after SCORE, list detected instruments/vocals: CHANNELS:Vocal,Kick,Bass
+   Only include channels actually heard. Omit this line if nothing is detected.
 
-[ANALYSIS HIERARCHY & PRIORITIZATION]
-- Scenario A: Multiple Instruments and Vocals Detected (Full Band Mix)
-  1. Identify the music genre (pop, worship, rock, jazz, k-pop, classical, speech, etc.) and adjust mix standards accordingly. Each genre has different acceptable tonal balance.
-  2. Intra-Band Balance: Focus on the volume and frequency balance between individual instruments.
-  3. Suggest fader level adjustments (e.g. "+2dB", "-1.5dB") when balance is the issue.
-  4. Group Balance: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.'
-  5. Individual Channel Precision: Provide specific EQ and tonal adjustments to resolve masking and achieve harmonic balance between elements.
-  *Never jump to vocal tone advice before checking overall balance first.
-  *Do not focus solely on vocals. Always address instrument balance before any vocal advice. Vary your advice across different elements of the mix.
+[CONSTRAINTS]
+- No channel numbers
+- Ignore any source not heard in this clip
+- If silent: ask for cleaner signal
 
-- Scenario B: Single Instrument or Single Vocal Detected (Solo/Isolated Track)
-  1. Tonal Correction (EQ): Adjust the fundamental tone and remove problematic frequencies.
-  2. Dynamic & Spatial Processing: Suggest optimal settings for Compressor, Gate, and Reverb.
+[CORE MIXING PROTOCOL]
+1. SCOPE CHECK
+Solo: Tonal EQ → Dynamics → Reverb.
+Band: Fader Balance → Frequency Masking → Precision EQ.
 
-[OUTPUT INSTRUCTION]
-- Start your response immediately with the prioritized advice.
-- Focus purely on actionable mixing solutions.
-- Always specify the instrument name when giving advice about a specific source.
-- Maximum 2 actionable advice items per response. Do not repeat or rephrase the same issue.
-- When input source is phone/smartphone microphone: never mention the microphone type in advice
+2. BAND HIERARCHY (Scenario A)
+Balance First: overall level relationship across all elements, instruments vs instruments, rhythm vs melody, low-end vs mid vs high-end spectral balance, advice intra-band Fader levels (+/- dB)
+Group Check: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.' advice group Fader levels (+/- dB)
+Anti-Masking: Resolve frequency clashes between parts.
+*Never jump to vocal tone advice before checking overall balance first.
+
+3. SOLO PRECISION (Scenario B)
+Tone Fix: Fundamental EQ correction.
+Dynamics: Compression / Gate / Ambience.
+
+[OUTPUT]
+- First line: one positive summary sentence
+- 1–3 actionable advice items. Always name the instrument.
+- Direct Only: No scenario naming.
+- Actionable: Precise dB values and specific EQ points, Q factors
+- No repeated or rephrased issues
+- Phone mic input: never mention mic type
 `.trim();
 
 const MODE_PROMPTS = {
@@ -90,32 +92,32 @@ const MIX_PROMPTS = {
 
   soundDensity: {
     '두껍게':    "Keep the overall mix thick and layered. Maintain a full, dense sound across all instruments.",
-    '중립':      "No specific instrument, vocal, or frequency range should stand out. Everything should blend harmoniously.",
+    '중립':      "Balanced",
     '깔끔하게':  "Keep the mix clean and well-separated. Remove unnecessary low-mid buildup.",
   },
 
   vocalTone: {
     '부드럽게':  "Vocals should sound warm, smooth, and full in the low-mids. Suppress the harsh zone and sibilance zone to the maximum.",
-    '중립':     "Gently smoothen the sibilance zone for silky tone.",
+    '중립':     "Sweet and mellow vocal",
     '명료하게':  "Prioritize Vocal clarity and openness, Avoid excessive boost that causes listener fatigue.",
   },
 
   vocalWeight: {
     '밴드중심':  "Focus on band energy, Vocals should be buried behind the instruments, creating an alternative rock-style sound where vocals feel distant and dreamy.",
-    '균형':     "Prioritize beats and overall band energy and balance. Vocals should sit back in the mix like k-pop idol musics, do not mention of K-pop music",
+    '균형':     "Dance Pop, overall balance. Vocals should sit back in the mix, do not mention of Dance Pop",
     '보컬중심':  "Vocals and instruments should be evenly balanced and well-audible.",
   },
 
   bassFeeling: {
-    '타이트':    "Keep low end tight and punchy. Actively remove low-end buildup or booming.",
-    '중립':      "",
-    '풍성하게':  "Keep low end warm and full. Preserve a spacious, rounded low-end sound.",
+    '타이트':    "low end tight. Actively remove low-end buildup or booming.",
+    '중립':     "Neat, flat low-end",
+    '풍성하게':  "warm and full low end. Preserve a spacious, rounded low-end sound.",
   },
 
   drumPunch: {
-    '자연스럽게':"Drums should sit back, supporting the musical flow without drawing attention.",
-    '중립':      "",
-    '강하게':    "Enhance kick and snare attack and punch. Make drums feel energetic and driving.",
+    '자연스럽게': "Drums should sit back, Subtle, supportive drums",
+    '중립':     "Controlled, not peaky",
+    '강하게':    "Enhance kick and snare attack and punch. energetic and driving.",
   },
 
   speechClarity: {
@@ -534,6 +536,10 @@ input[type=range] {
 .badge-rt      { background:rgba(0,255,136,0.1);   color:var(--accent); border:1px solid rgba(0,255,136,0.2); }
 
 .card-problem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: clamp(10px,1.8vw,16px) clamp(12px,2vw,18px);
   background: var(--card-bg);
   border: 1px solid var(--border2);
@@ -543,6 +549,21 @@ input[type=range] {
   color: var(--text);
   line-height: 1.5;
 }
+.card-problem-text {
+  flex: 1;
+  min-width: 0;
+}
+.mix-score {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.mix-score.score-good    { color: var(--accent); }
+.mix-score.score-ok      { color: var(--warn); }
+.mix-score.score-bad     { color: var(--danger); }
 .card-problem.cheer {
   border-color: rgba(0,255,136,0.2);
   background: rgba(0,255,136,0.04);
@@ -1052,6 +1073,9 @@ input[type=range] {
   .card-problem {
     font-size: clamp(17px, 4.5vw, 22px);
   }
+  .mix-score {
+    font-size: clamp(32px, 7vw, 44px);
+  }
   .card-solution {
     font-size: clamp(15px, 4vw, 19px);
   }
@@ -1325,8 +1349,7 @@ input[type=range] {
       <div class="mic-wrap">
         <div style="display:flex;align-items:center;gap:clamp(10px,2vw,18px);">
           <input id="user-hint-input" type="text" maxlength="20" placeholder="무엇을 조언할까요?" data-i18n="hint_placeholder"
-            oninput="state.userHint=this.value.trim()"
-            onkeydown="if(event.key==='Enter'){this.blur();handleMic();}"
+            onkeydown="if(event.key==='Enter' && !event.isComposing){this.blur();handleMic();}"
             style="width:clamp(90px,18vw,160px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:clamp(4px,0.8vw,7px) clamp(8px,1.2vw,12px);font-family:var(--font-mono);font-size:var(--xs);color:var(--fg1);outline:none;flex-shrink:0;"
           />
           <div id="solo-mix-toggle" onclick="toggleSoloMix()" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;border-radius:99px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;">
@@ -1834,6 +1857,7 @@ const state = {
   wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
   userHint: '',
+  issueHistory: [],
   lang: localStorage.getItem('livemaxai_lang') || 'ko',
 };
 
@@ -2571,12 +2595,8 @@ async function analyzeWithGemini(audioBlob, num) {
         spaceSection = '공간 환경: 공간크기=소형 실내, 반사음=적음, 서브우퍼=없음, 딜레이스피커=없음, 피드백여유=보통, never mention room acoustics, reflections, or space characteristics in advice';
          mixSection = mixSection
           .replace(
-          'You are a live PA sound engineer advisor.',
+          'You are a live PA sound engineer advisor.', 
           'You are a professional studio recording engineer.'
-          )
-          .replace(
-          '- Never advise based on hi-fi or studio mixing standards',
-          '- Advise based on studio mixing and mastering standards.'
           );
       } else {
         const envParts = [];
@@ -2604,7 +2624,12 @@ async function analyzeWithGemini(audioBlob, num) {
     // 6. 사용자 힌트
     const hintSection = state.userHint ? `User focus: ${state.userHint}` : '';
 
-    const contextBlock = [mixSection, spaceSection, sourceInfo, memoSection, hintSection].filter(Boolean).join('\n');
+    // 7. 이슈 히스토리
+    const historySection = state.issueHistory.length
+      ? 'Recent issues: ' + state.issueHistory.join(' | ')
+      : '';
+
+    const contextBlock = [mixSection, spaceSection, sourceInfo, memoSection, hintSection, historySection].filter(Boolean).join('\n');
 
     const soloNote = state.soloMode
       ? '\nSingle instrument analysis mode. Focus only on the single most dominant instrument. Treat any other faint or background sounds as irrelevant bleed and ignore them completely. Do not give band balance advice.'
@@ -2637,7 +2662,22 @@ ${t('ai_prompt')}`;
     const text = parts.filter(p=>p.text && !p.thought).map(p=>p.text).join('').trim();
     if (!text) throw new Error(t('err_empty'));
     const lines = text.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
-    const result = { problem: lines[0]||'분석 완료', solutions: lines.slice(1) };
+    const scoreMatch = lines[0]?.match(/^SCORE:(\d+)/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
+    let remaining = scoreMatch ? lines.slice(1) : lines;
+    const channelMatch = remaining[0]?.match(/^CHANNELS:(.+)/);
+    const channels = channelMatch ? channelMatch[1].split(',').map(c=>c.trim()).filter(Boolean) : [];
+    const contentLines = channelMatch ? remaining.slice(1) : remaining;
+    const result = { score, channels, problem: contentLines[0]||'분석 완료', solutions: contentLines.slice(1) };
+
+    // 히스토리 저장
+    const chTag = channels.length ? `[${channels.join(',')}] ` : '';
+    const hintTag = state.userHint ? `(힌트: ${state.userHint}) ` : '';
+    const solTag = result.solutions.length ? result.solutions.slice(0,2).join(' / ') : '';
+    const historyEntry = `${chTag}${hintTag}${result.problem}${solTag ? ' → ' + solTag : ''}`;
+    state.issueHistory.push(historyEntry);
+    if (state.issueHistory.length > 3) state.issueHistory.shift();
+
     if (statusEl) statusEl.remove();
     renderAnalysisCard(groupEl, result);
   } catch(err) {
@@ -2649,12 +2689,39 @@ ${t('ai_prompt')}`;
   }
 }
 
+function animateMixScore(el, target) {
+  const duration = 1200;
+  const start = performance.now();
+  function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    el.textContent = Math.round(easeOutQuart(progress) * target);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 function renderAnalysisCard(groupEl, result) {
   if (!groupEl||!result) return;
   const isCheer = !result.solutions||result.solutions.length===0;
   const p = document.createElement('div');
   p.className = 'card-problem'+(isCheer?' cheer':'');
-  p.textContent = result.problem||'분석 완료';
+
+  const textSpan = document.createElement('span');
+  textSpan.className = 'card-problem-text';
+  textSpan.textContent = result.problem||'분석 완료';
+  p.appendChild(textSpan);
+
+  if (result.score != null) {
+    const scoreEl = document.createElement('span');
+    const scoreClass = result.score >= 85 ? 'score-good' : result.score >= 70 ? 'score-ok' : 'score-bad';
+    scoreEl.className = 'mix-score ' + scoreClass;
+    scoreEl.textContent = '0';
+    p.appendChild(scoreEl);
+    requestAnimationFrame(() => animateMixScore(scoreEl, result.score));
+  }
+
   groupEl.appendChild(p);
   if (Array.isArray(result.solutions)) {
     result.solutions.forEach(sol => {
@@ -3152,6 +3219,18 @@ setComp(0.4);
 
 // 첫 실행 튜토리얼 (DOM 완전 렌더 후)
 setTimeout(tutorialStart, 300);
+
+// ── HINT INPUT IME 패치 (맥 한글 중복 입력 방지) ──
+const hintEl = document.getElementById('user-hint-input');
+let _hintComposing = false;
+hintEl.addEventListener('compositionstart', () => _hintComposing = true);
+hintEl.addEventListener('compositionend', (e) => {
+  _hintComposing = false;
+  state.userHint = e.target.value.trim();
+});
+hintEl.addEventListener('input', (e) => {
+  if (!_hintComposing) state.userHint = e.target.value.trim();
+});
 
 const micBtnEl = document.getElementById('mic-btn');
 micBtnEl.addEventListener('touchend', e => {
