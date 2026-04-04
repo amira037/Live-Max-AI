@@ -30,8 +30,8 @@
 const SYSTEM_PROMPT = `
 You are a live PA sound engineer advisor.
 - Live PA only: consider feedback, room reflections, audience absorption
-- Harsh zone 2.5~5kHz / sibilance 6~8kHz: boost only if severe and clearly audible
-- Use: fader, compressor (Ratio/Attack/MakeupGain), EQ (with Q), low-cut, high-cut, shelving, reverb
+- Harsh zone 2.5~5kHz / sibilance 6~8kHz: advise only if severe and clearly audible
+- Use: fader(db), group fader(db), compressor (Ratio/Attack/MakeupGain), EQ (with Q), low-cut, high-cut, shelving, reverb
 - Vocal compressor attack: 10~30ms for consonant clarity / 1~5ms for harsh peaks / default ~10ms
 
 [SCORING]
@@ -49,6 +49,8 @@ You are a live PA sound engineer advisor.
    - 70–84: Good mix with minor issues → briefly mention what works well, suggest 1–2 improvements
    - 85–98: Excellent, professional-level → describe what sounds outstanding
    Output the total as the very first line: SCORE:85
+   On the very next line after SCORE, list detected instruments/vocals: CHANNELS:Vocal,Kick,Bass
+   Only include channels actually heard. Omit this line if nothing is detected.
 
 [CONSTRAINTS]
 - No channel numbers
@@ -62,7 +64,7 @@ Band: Fader Balance → Frequency Masking → Precision EQ.
 
 2. BAND HIERARCHY (Scenario A)
 Balance First: overall level relationship across all elements, instruments vs instruments, rhythm vs melody, low-end vs mid vs high-end spectral balance, advice intra-band Fader levels (+/- dB)
-Group Check: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.' advice group Fader levels (+/- dB)
+Group Check: Evaluate the level relationship between the 'Vocal' and the 'Instrument Group.' and the 'rhythn group', advise group Fader levels (+/- dB)
 Anti-Masking: Resolve frequency clashes between parts.
 *Never jump to vocal tone advice before checking overall balance first.
 
@@ -114,7 +116,7 @@ const MIX_PROMPTS = {
 
   drumPunch: {
     '자연스럽게': "Drums should sit back, Subtle, supportive drums",
-    '중립':     "Controlled, not peaky",
+    '중립':     "Controlled, well compressed,not peaky",
     '강하게':    "Enhance kick and snare attack and punch. energetic and driving.",
   },
 
@@ -1855,6 +1857,7 @@ const state = {
   wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
   userHint: '',
+  issueHistory: [],
   lang: localStorage.getItem('livemaxai_lang') || 'ko',
 };
 
@@ -2621,7 +2624,12 @@ async function analyzeWithGemini(audioBlob, num) {
     // 6. 사용자 힌트
     const hintSection = state.userHint ? `User focus: ${state.userHint}` : '';
 
-    const contextBlock = [mixSection, spaceSection, sourceInfo, memoSection, hintSection].filter(Boolean).join('\n');
+    // 7. 이슈 히스토리
+    const historySection = state.issueHistory.length
+      ? 'Recent issues: ' + state.issueHistory.join(' | ')
+      : '';
+
+    const contextBlock = [mixSection, spaceSection, sourceInfo, memoSection, hintSection, historySection].filter(Boolean).join('\n');
 
     const soloNote = state.soloMode
       ? '\nSingle instrument analysis mode. Focus only on the single most dominant instrument. Treat any other faint or background sounds as irrelevant bleed and ignore them completely. Do not give band balance advice.'
@@ -2656,8 +2664,20 @@ ${t('ai_prompt')}`;
     const lines = text.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
     const scoreMatch = lines[0]?.match(/^SCORE:(\d+)/);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-    const contentLines = scoreMatch ? lines.slice(1) : lines;
-    const result = { score, problem: contentLines[0]||'분석 완료', solutions: contentLines.slice(1) };
+    let remaining = scoreMatch ? lines.slice(1) : lines;
+    const channelMatch = remaining[0]?.match(/^CHANNELS:(.+)/);
+    const channels = channelMatch ? channelMatch[1].split(',').map(c=>c.trim()).filter(Boolean) : [];
+    const contentLines = channelMatch ? remaining.slice(1) : remaining;
+    const result = { score, channels, problem: contentLines[0]||'분석 완료', solutions: contentLines.slice(1) };
+
+    // 히스토리 저장
+    const chTag = channels.length ? `[${channels.join(',')}] ` : '';
+    const hintTag = state.userHint ? `(힌트: ${state.userHint}) ` : '';
+    const solTag = result.solutions.length ? result.solutions.slice(0,2).join(' / ') : '';
+    const historyEntry = `${chTag}${hintTag}${result.problem}${solTag ? ' → ' + solTag : ''}`;
+    state.issueHistory.push(historyEntry);
+    if (state.issueHistory.length > 3) state.issueHistory.shift();
+
     if (statusEl) statusEl.remove();
     renderAnalysisCard(groupEl, result);
   } catch(err) {
