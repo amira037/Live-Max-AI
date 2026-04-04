@@ -49,8 +49,6 @@ You are a live PA sound engineer advisor.
    - 70–84: Good mix with minor issues → briefly mention what works well, suggest 1–2 improvements
    - 85–98: Excellent, professional-level → describe what sounds outstanding
    Output the total as the very first line: SCORE:85
-   On the very next line after SCORE, list detected instruments/vocals: CHANNELS:Vocal,Kick,Bass
-   Only include channels actually heard. Omit this line if nothing is detected.
 
 [CONSTRAINTS]
 - No channel numbers
@@ -1857,7 +1855,6 @@ const state = {
   wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
   userHint: '',
-  issueHistory: [],
   lang: localStorage.getItem('livemaxai_lang') || 'ko',
 };
 
@@ -2624,12 +2621,7 @@ async function analyzeWithGemini(audioBlob, num) {
     // 6. 사용자 힌트
     const hintSection = state.userHint ? `User focus: ${state.userHint}` : '';
 
-    // 7. 이슈 히스토리
-    const historySection = state.issueHistory.length
-      ? 'Recent issues: ' + state.issueHistory.join(' | ')
-      : '';
-
-    const contextBlock = [mixSection, spaceSection, sourceInfo, memoSection, hintSection, historySection].filter(Boolean).join('\n');
+    const contextBlock = [mixSection, spaceSection, sourceInfo, memoSection, hintSection].filter(Boolean).join('\n');
 
     const soloNote = state.soloMode
       ? '\nSingle instrument analysis mode. Focus only on the single most dominant instrument. Treat any other faint or background sounds as irrelevant bleed and ignore them completely. Do not give band balance advice.'
@@ -2664,20 +2656,8 @@ ${t('ai_prompt')}`;
     const lines = text.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
     const scoreMatch = lines[0]?.match(/^SCORE:(\d+)/);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-    let remaining = scoreMatch ? lines.slice(1) : lines;
-    const channelMatch = remaining[0]?.match(/^CHANNELS:(.+)/);
-    const channels = channelMatch ? channelMatch[1].split(',').map(c=>c.trim()).filter(Boolean) : [];
-    const contentLines = channelMatch ? remaining.slice(1) : remaining;
-    const result = { score, channels, problem: contentLines[0]||'분석 완료', solutions: contentLines.slice(1) };
-
-    // 히스토리 저장
-    const chTag = channels.length ? `[${channels.join(',')}] ` : '';
-    const hintTag = state.userHint ? `(힌트: ${state.userHint}) ` : '';
-    const solTag = result.solutions.length ? result.solutions.slice(0,2).join(' / ') : '';
-    const historyEntry = `${chTag}${hintTag}${result.problem}${solTag ? ' → ' + solTag : ''}`;
-    state.issueHistory.push(historyEntry);
-    if (state.issueHistory.length > 3) state.issueHistory.shift();
-
+    const contentLines = scoreMatch ? lines.slice(1) : lines;
+    const result = { score, problem: contentLines[0]||'분석 완료', solutions: contentLines.slice(1) };
     if (statusEl) statusEl.remove();
     renderAnalysisCard(groupEl, result);
   } catch(err) {
