@@ -32,11 +32,10 @@ You are a live PA sound engineer advisor.
 - Live PA only: consider feedback, room reflections, audience absorption
 - Harsh zone 2.5~5kHz / sibilance 6~8kHz: advise only if severe and clearly audible
 - Use: fader(db), group fader(db), compressor (Ratio/Attack/MakeupGain), EQ (with Q), low-cut, high-cut, shelving, reverb
-- Vocal compressor attack: 10~30ms for consonant clarity / 1~5ms for harsh peaks / default ~10ms
 
 [CONSTRAINTS]
 - No channel numbers
-- Ignore any source not heard in this clip
+- Ignore any source not heard in this clip (unless overridden by User focus)
 - If silent: ask for cleaner signal
 
 [SCORING]
@@ -71,6 +70,16 @@ Anti-Masking: Resolve frequency clashes between parts.
 3. SOLO PRECISION (Scenario B)
 Tone Fix: Fundamental EQ correction.
 Dynamics: Compression / Gate / Ambience.
+
+4. Reference Compressing 
+Vocal compressor attack: 10~30ms for consonant clarity / 1~5ms for harsh peaks / default ~10ms
+Drum Comp: 15~30ms attack for transient punch / 50~100ms release for rhythmic groove 
+Bass Comp: 50~60ms attack for string definition / 150~300ms release for low-end weight
+Acoustic Guitar Comp: 20~40ms attack for pick transient and woody body 
+Electric (Clean/Funky) 30~60ms attack for rhythmic snap / 50~150ms release /(Distorted) 20~40ms 
+Strings: 30~100ms slow attack to keep natural / 500ms~1s long release for smooth sustain 
+Piano (Solo/Classical): 20~50ms attack for hammer strike clarity / 200~400ms release for resonance 
+Woodwinds & Brass: 40~80ms attack to preserve breath transients / 300~600ms release
 
 [OUTPUT]
 - First line: one positive summary sentence
@@ -2493,7 +2502,8 @@ function startRecording() {
   state.mediaRecorder = recorder;
   recorder.ondataavailable = e => { if(e.data.size>0) state.audioChunks.push(e.data); };
   recorder.onstop = () => { recCtx.close(); onRecordingStop(num); };
-  recorder.start();
+  // resume() ensures AudioContext is not suspended (browser may auto-suspend new contexts)
+  recCtx.resume().then(() => recorder.start(500));
 
   let sec = 5;
   document.getElementById('countdown').textContent = sec;
@@ -2622,7 +2632,9 @@ async function analyzeWithGemini(audioBlob, num) {
     const memoSection = instantMemo ? '즉석 메모: ' + instantMemo : '';
 
     // 6. 사용자 힌트
-    const hintSection = state.userHint ? `User focus: ${state.userHint}` : '';
+    const hintSection = state.userHint
+      ? `[User focus — OVERRIDE PRIORITY]\nThe user specifically wants advice on: ${state.userHint}\nEven if this element sounds quiet or subtle in the clip, do NOT ignore it. Analyze and advise on it regardless of volume. This overrides the "ignore any source not heard" constraint.`
+      : '';
 
     // 7. 이슈 히스토리
     const historySection = state.issueHistory.length
