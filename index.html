@@ -1958,7 +1958,13 @@ async function initAudio(deviceId, existingStream) {
     if (existingStream) {
       stream = existingStream;
     } else {
-      const constraints = { audio: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true, video: false };
+      const audioConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        ...(deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : {})
+      };
+      const constraints = { audio: audioConstraints, video: false };
       stream = await navigator.mediaDevices.getUserMedia(constraints);
     }
     state.micStream = stream;
@@ -2047,7 +2053,7 @@ async function changeDevice(deviceId) {
   // Pre-request permission before switching
   try {
     newStream = await navigator.mediaDevices.getUserMedia({
-      audio: { deviceId: { exact: deviceId } },
+      audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false },
       video: false
     });
   } catch(e) {
@@ -2055,7 +2061,7 @@ async function changeDevice(deviceId) {
       // Android PWA fallback: use ideal instead of exact
       try {
         newStream = await navigator.mediaDevices.getUserMedia({
-          audio: { deviceId: { ideal: deviceId } },
+          audio: { deviceId: { ideal: deviceId }, echoCancellation: false, noiseSuppression: false },
           video: false
         });
       } catch(e2) {
