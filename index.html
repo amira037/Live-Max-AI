@@ -1913,7 +1913,6 @@ function loadSettings() {
     if (s.model)     state.model     = s.model;
     if (s.useProxy !== undefined) state.useProxy = s.useProxy;
     if (s.apiKey)    state.apiKey    = s.apiKey;
-    if (s.analysisMode) state.analysisMode = s.analysisMode;
     const mp2 = JSON.parse(localStorage.getItem('memo_presets') || 'null');
     if (Array.isArray(mp2)) state.memoPresets = mp2;
     if (s.pinnedMemoIdx !== undefined) state.pinnedMemoIdx = s.pinnedMemoIdx;
@@ -1931,7 +1930,6 @@ function saveToStorage() {
     model: state.model,
     useProxy: state.useProxy,
     apiKey: state.apiKey,
-    analysisMode: state.analysisMode,
     pinnedMemoIdx: state.pinnedMemoIdx,
   }));
 }
@@ -2197,8 +2195,11 @@ function setAnalysisMode(mode) {
     state.mixPref.type = 'speech';
     localStorage.setItem('mix_pref', JSON.stringify(state.mixPref));
     renderMixPref();
+  } else if (state.mixPref.type === 'speech') {
+    state.mixPref.type = 'music';
+    localStorage.setItem('mix_pref', JSON.stringify(state.mixPref));
+    renderMixPref();
   }
-  saveToStorage();
   updateAnalysisModeUI();
 }
 function updateAnalysisModeUI() {
@@ -2942,6 +2943,7 @@ function exportSettings() {
   const data = {
     source: state.source,
     model: state.model,
+    apiKey: state.apiKey,
     spaceEnv: state.spaceEnv,
     spacePresets: state.spacePresets,
     mixPref: state.mixPref,
@@ -2967,6 +2969,7 @@ function importSettings(event) {
 
       if (data.source) state.source = data.source;
       if (data.model) state.model = data.model;
+      if (data.apiKey) state.apiKey = data.apiKey;
       if (data.spaceEnv) { state.spaceEnv = { ...state.spaceEnv, ...data.spaceEnv }; localStorage.setItem('space_env', JSON.stringify(state.spaceEnv)); }
       if (Array.isArray(data.spacePresets)) { state.spacePresets = data.spacePresets; localStorage.setItem('space_presets', JSON.stringify(state.spacePresets)); }
       if (data.mixPref) { state.mixPref = { ...state.mixPref, ...data.mixPref }; localStorage.setItem('mix_pref', JSON.stringify(state.mixPref)); }
@@ -3367,7 +3370,41 @@ function _tutDone() {
 }
 
 // ── INIT ──
+// localStorage 초기화 감지: 이전 세션에서 저장된 데이터가 없는 경우 자동 불러오기 배너 표시
+(function detectStorageLoss() {
+  const hadPrevSession = sessionStorage.getItem('livemaxai_session_active');
+  if (hadPrevSession) return; // 같은 세션 내 새로고침은 무시
+  sessionStorage.setItem('livemaxai_session_active', '1');
+  // 이미 localStorage에 데이터가 있으면 정상 — 배너 불필요
+  if (localStorage.getItem('livemaxai')) return;
+  // 세션 플래그도 없고 localStorage도 없는 경우: 첫 실행 OR 저장 손실
+  // tutorial_done이 없으면 첫 실행이므로 배너 스킵
+  // tutorial_done도 없다면 첫 실행 → 아무것도 안 함
+  // tutorial_done이 없으면 첫 실행이므로 배너 없이 패스
+})();
+
 loadSettings();
+
+// 저장 손실 감지: loadSettings 후 API 키가 없고 tutorial_done 마커도 없는 경우 = 첫 실행
+// tutorial_done은 있는데 API 키가 없으면 = localStorage 초기화됨
+(function checkRestorable() {
+  if (localStorage.getItem('tutorial_done') && !state.apiKey) {
+    setTimeout(() => {
+      const banner = document.createElement('div');
+      banner.id = 'storage-loss-banner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#c0392b;color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;font-family:var(--font-mono)';
+      banner.innerHTML = `
+        <span style="flex:1">⚠️ 앱 설정이 초기화되었습니다. 백업 파일이 있다면 불러오기를 눌러주세요.</span>
+        <button onclick="document.getElementById('import-file').click();this.closest('#storage-loss-banner').remove()"
+          style="background:#fff;color:#c0392b;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:bold;white-space:nowrap">📥 설정 불러오기</button>
+        <button onclick="this.closest('#storage-loss-banner').remove()"
+          style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:6px;padding:5px 10px;cursor:pointer">✕</button>
+      `;
+      document.body.appendChild(banner);
+    }, 500);
+  }
+})();
+
 initSpacePresets();
 applyLang();
 updateSourceUI();
