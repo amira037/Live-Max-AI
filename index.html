@@ -1131,6 +1131,74 @@ input[type=range] {
   .modal-input { font-size: 16px !important; }
 }
 
+/* ── 모바일 가로: 컨트롤 접힘 + 레이아웃 압축 ── */
+@media (max-width: 767px) and (orientation: landscape) {
+  /* canvas 높이 축소 */
+  canvas#meter { height: 52px !important; }
+
+  /* graph-pane 패딩/gap 축소 */
+  .graph-pane {
+    padding-top: 6px !important;
+    padding-bottom: 0 !important;
+    gap: 4px !important;
+    overflow-y: auto;
+  }
+
+  /* controls 접힘 토글 헤더 표시 */
+  .controls-toggle-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 7px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted2);
+    user-select: none;
+    border-radius: var(--r);
+    letter-spacing: 0.05em;
+  }
+  .controls-toggle-header:active { opacity: 0.7; }
+  .controls-collapsible {
+    overflow: hidden;
+    transition: height 0.3s ease;
+  }
+  .controls-collapsible.is-collapsed {
+    height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* mic-wrap 압축 */
+  .mic-wrap {
+    padding: 6px 0 8px !important;
+    gap: 5px !important;
+  }
+
+  /* 녹음 버튼 작게 */
+  .mic-btn {
+    width: 62px !important;
+    height: 62px !important;
+  }
+  .mic-icon { font-size: calc(var(--huge) * 0.65) !important; }
+  .mic-label { font-size: 11px !important; }
+
+  /* hint input 작게 */
+  #user-hint-input {
+    width: clamp(70px, 20vw, 130px) !important;
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* MIX/SOLO/SPK 토글 작게 */
+  #analysis-mode-toggle span {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* advice-header (모바일 ≤768px에서 숨김이므로 그대로) */
+}
+
 /* sit-del 터치 영역 개선 */
 .sit-chip .sit-del {
   opacity: 0.6;
@@ -3450,11 +3518,12 @@ document.addEventListener('touchstart', async () => {
   }
 }, { once: true });
 
-// Controls panel collapse (mobile portrait only)
+// Controls panel collapse (mobile portrait + mobile landscape)
 const _ctrlMQ = window.matchMedia('(max-width: 1023px) and (orientation: portrait)');
+const _ctrlMQLand = window.matchMedia('(max-width: 767px) and (orientation: landscape)');
 
 function _isControlsMobile() {
-  return _ctrlMQ.matches;
+  return _ctrlMQ.matches || _ctrlMQLand.matches;
 }
 
 function toggleControlsPanel() {
@@ -3514,6 +3583,7 @@ function initControlsPanel() {
 
 document.addEventListener('DOMContentLoaded', initControlsPanel);
 _ctrlMQ.addEventListener('change', initControlsPanel);
+_ctrlMQLand.addEventListener('change', initControlsPanel);
 </script>
 
 <script>
