@@ -1449,6 +1449,29 @@ input[type=range] {
         </div>
       </div>
 
+      <!-- ▶ API 연결 -->
+      <div class="setting-section" id="setting-section-api">
+        <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_api">API 연결</span><span class="acc-arrow">▶</span></div>
+        <div class="acc-body">
+          <div class="radio-group">
+            <div class="radio-option" id="api-proxy" onclick="selectApiMode(true)">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              <div><div class="radio-text" data-i18n="api_proxy">기본 프록시 사용</div><div class="ch-hint" data-i18n="api_proxy_hint">proxy.dumpit.dev 경유 (기본값)</div></div>
+            </div>
+            <div class="radio-option" id="api-direct" onclick="selectApiMode(false)">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              <div><div class="radio-text" data-i18n="api_direct">API 키 사용</div><div class="ch-hint" data-i18n="api_direct_hint">Google AI Studio에서 발급한 키</div></div>
+            </div>
+          </div>
+          <div id="api-key-row" style="display:none;margin-top:8px">
+            <input class="api-input" id="api-key-input" type="password"
+              placeholder="AIza..." autocomplete="off" spellcheck="false"
+              oninput="state.apiKey=this.value.trim();saveToStorage()"
+              data-i18n="api_key_placeholder">
+          </div>
+        </div>
+      </div>
+
       <!-- ▶ 공간 환경 -->
       <div class="setting-section" id="setting-section-space">
         <div class="acc-title" onclick="toggleAcc(this)"><span data-i18n="sec_space">공간 환경</span><span class="acc-arrow">▶</span></div>
@@ -1667,8 +1690,11 @@ const I18N = {
     advice_notice:'⚠️모든 조언은 라이브 PA 환경을 기준으로 제안됩니다',
     howl_title:'하울링 감지', howl_last:'마지막 하울링', howl_near:'부근', howl_at:'감지',
     settings_title:'설정',
-    sec_device:'입력 장치', sec_model:'AI 모델', sec_space:'공간 환경',
+    sec_device:'입력 장치', sec_model:'AI 모델', sec_api:'API 연결', sec_space:'공간 환경',
     sec_mix:'믹스 취향', sec_memo:'즉석 메모', sec_help:'도움말', sec_backup:'설정 백업',
+    api_proxy:'기본 프록시 사용', api_proxy_hint:'proxy.dumpit.dev 경유 (기본값)',
+    api_direct:'직접 API 키 사용', api_direct_hint:'Google AI Studio에서 발급한 키',
+    api_key_placeholder:'Google AI API 키 입력 (AIza...)',
     device_default:'기본 마이크', device_hint:'LIVE 탭을 열면 장치 목록이 자동으로 불러와져요', device_mic_n:'마이크 ',
     space_type_label:'공간 유형', space_live_pa:'라이브 PA', space_studio:'스튜디오',
     space_size_label:'공간 크기', space_size_0:'소형실내', space_size_1:'중형실내', space_size_2:'대형/야외',
@@ -1730,8 +1756,11 @@ const I18N = {
     advice_notice:'⚠️All advice is tailored for live PA environments',
     howl_title:'Feedback Detected', howl_last:'Last Feedback', howl_near:'around', howl_at:'detected',
     settings_title:'SETTINGS',
-    sec_device:'Input Device', sec_model:'AI Model', sec_space:'Venue',
+    sec_device:'Input Device', sec_model:'AI Model', sec_api:'API Connection', sec_space:'Venue',
     sec_mix:'Mix Style', sec_memo:'Session Notes', sec_help:'Help', sec_backup:'Backup',
+    api_proxy:'Use Default Proxy', api_proxy_hint:'Via proxy.dumpit.dev (default)',
+    api_direct:'Use Direct API Key', api_direct_hint:'Key from Google AI Studio',
+    api_key_placeholder:'Enter Google AI API key (AIza...)',
     device_default:'Default Mic', device_hint:'Open the LIVE tab to load the device list', device_mic_n:'Mic ',
     space_type_label:'Venue Type', space_live_pa:'Live PA', space_studio:'Studio',
     space_size_label:'Venue Size', space_size_0:'Small Indoor', space_size_1:'Medium Indoor', space_size_2:'Large/Outdoor',
@@ -1863,6 +1892,8 @@ const state = {
   devices: [],
   wakeLock: null,
   model: 'gemini-3.1-flash-lite-preview',
+  useProxy: true,
+  apiKey: '',
   userHint: '',
   issueHistory: [],
   lang: localStorage.getItem('livemaxai_lang') || 'ko',
@@ -1880,6 +1911,8 @@ function loadSettings() {
     if (s.source)    state.source    = s.source;
     if (s.deviceId)  state.deviceId  = s.deviceId;
     if (s.model)     state.model     = s.model;
+    if (s.useProxy !== undefined) state.useProxy = s.useProxy;
+    if (s.apiKey)    state.apiKey    = s.apiKey;
     const se = JSON.parse(localStorage.getItem('space_env') || 'null');
     if (se) state.spaceEnv = { ...state.spaceEnv, ...se };
     const sp = JSON.parse(localStorage.getItem('space_presets') || 'null');
@@ -1892,6 +1925,8 @@ function saveToStorage() {
   localStorage.setItem('livemaxai', JSON.stringify({
     source: state.source, deviceId: state.deviceId,
     model: state.model,
+    useProxy: state.useProxy,
+    apiKey: state.apiKey,
   }));
 }
 
@@ -2653,8 +2688,12 @@ ${t('ai_prompt')}`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
+    const useDirectApi = !state.useProxy && state.apiKey;
+    const apiUrl = useDirectApi
+      ? `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:generateContent?key=${state.apiKey}`
+      : `https://proxy.dumpit.dev/v1beta/models/${state.model}:generateContent`;
     const response = await fetch(
-      `https://proxy.dumpit.dev/v1beta/models/${state.model}:generateContent`,
+      apiUrl,
       {
         method:'POST', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
@@ -2775,11 +2814,31 @@ function renderSettings() {
     el.querySelector('.radio-dot-inner').style.display = active ? 'block' : 'none';
   });
   renderDeviceSelect();
+  renderApiMode();
   renderSpaceEnv();
   renderMixPref();
 }
 function selectSource(src) { state.source=src; renderSettings(); }
 function selectModel(val) { state.model=val; saveToStorage(); renderSettings(); }
+function selectApiMode(useProxy) {
+  state.useProxy = useProxy;
+  saveToStorage();
+  renderApiMode();
+}
+function renderApiMode() {
+  const proxyEl  = document.getElementById('api-proxy');
+  const directEl = document.getElementById('api-direct');
+  const keyRow   = document.getElementById('api-key-row');
+  const keyInput = document.getElementById('api-key-input');
+  if (!proxyEl) return;
+  const useProxy = state.useProxy;
+  proxyEl.classList.toggle('selected', useProxy);
+  proxyEl.querySelector('.radio-dot-inner').style.display = useProxy ? 'block' : 'none';
+  directEl.classList.toggle('selected', !useProxy);
+  directEl.querySelector('.radio-dot-inner').style.display = !useProxy ? 'block' : 'none';
+  keyRow.style.display = useProxy ? 'none' : 'block';
+  if (keyInput && state.apiKey) keyInput.value = state.apiKey;
+}
 function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
 function confirmPreset() {
   const name=document.getElementById('modal-input').value.trim();
