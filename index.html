@@ -1347,10 +1347,13 @@ input[type=range] {
       <!-- Mic button -->
       <div class="mic-wrap">
         <div style="display:flex;align-items:center;gap:clamp(10px,2vw,18px);">
-          <div id="analysis-mode-toggle" style="display:flex;align-items:center;cursor:pointer;border-radius:99px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;">
-            <span id="amode-mix"    onclick="setAnalysisMode('mix')"    style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,14px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;text-align:center;">MIX</span>
-            <span id="amode-solo"   onclick="setAnalysisMode('solo')"   style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,14px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;text-align:center;border-left:1px solid var(--border2);border-right:1px solid var(--border2);">SOLO</span>
-            <span id="amode-speech" onclick="setAnalysisMode('speech')" style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,14px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;text-align:center;">SPEECH</span>
+          <input id="user-hint-input" type="text" maxlength="20" placeholder="무엇을 조언할까요?" data-i18n="hint_placeholder"
+            style="width:clamp(90px,18vw,160px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:clamp(4px,0.8vw,7px) clamp(8px,1.2vw,12px);font-family:var(--font-mono);font-size:var(--xs);color:var(--fg1);outline:none;flex-shrink:0;"
+          />
+          <div id="analysis-mode-toggle" style="display:flex;flex-direction:column;align-items:center;border-radius:99px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;">
+            <span id="amode-mix"    onclick="setAnalysisMode('mix')"    style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,16px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;width:100%;text-align:center;cursor:pointer;">MIX</span>
+            <span id="amode-solo"   onclick="setAnalysisMode('solo')"   style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,16px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;width:100%;text-align:center;cursor:pointer;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);">SOLO</span>
+            <span id="amode-speech" onclick="setAnalysisMode('speech')" style="padding:clamp(5px,1vw,8px) clamp(10px,2vw,16px);font-family:var(--font-mono);font-size:var(--xs);transition:all 0.2s;width:100%;text-align:center;cursor:pointer;">SPK</span>
           </div>
           <div class="mic-btn" id="mic-btn" onclick="handleMic()">
             <span class="mic-icon">🎙</span>
@@ -2734,10 +2737,13 @@ async function analyzeWithGemini(audioBlob, num) {
     const instantMemo = document.getElementById('instant-memo')?.value.trim();
     const memoSection = instantMemo ? '즉석 메모: ' + instantMemo : '';
 
-    // 6. 사용자 힌트 (SPEECH 모드 안내)
-    const hintSection = state.analysisMode === 'speech'
-      ? '[User focus] Speech intelligibility is the absolute priority. Focus on vocal clarity, intelligibility, and any frequency masking of speech.'
-      : '';
+    // 6. 사용자 힌트
+    const userHint = document.getElementById('user-hint-input')?.value.trim();
+    const hintSection = userHint
+      ? `[User focus — OVERRIDE PRIORITY]\nThe user specifically wants advice on: ${userHint}\nEven if this element sounds quiet or subtle in the clip, do NOT ignore it. Analyze and advise on it regardless of volume. This overrides the "ignore any source not heard" constraint.`
+      : state.analysisMode === 'speech'
+        ? '[User focus] Speech intelligibility is the absolute priority. Focus on vocal clarity, intelligibility, and any frequency masking of speech.'
+        : '';
 
     // 7. 이슈 히스토리
     const historySection = state.issueHistory.length
@@ -2806,7 +2812,7 @@ ${t('ai_prompt')}`;
 
     // 히스토리 저장
     const chTag = channels.length ? `[${channels.join(',')}] ` : '';
-    const hintTag = state.analysisMode !== 'mix' ? `(${state.analysisMode}) ` : '';
+    const hintTag = userHint ? `(힌트: ${userHint}) ` : state.analysisMode !== 'mix' ? `(${state.analysisMode}) ` : '';
     const solTag = result.solutions.length ? result.solutions.slice(0,2).join(' / ') : '';
     const historyEntry = `${chTag}${hintTag}${result.problem}${solTag ? ' → ' + solTag : ''}`;
     state.issueHistory.push(historyEntry);
@@ -3180,7 +3186,7 @@ function getTutorialSteps() {
   return [
     { target: null,                                        text: t('tut_0'), settings: false },
     { target: '#mic-btn',                                  text: t('tut_1'), settings: false },
-    { target: '#analysis-mode-toggle',                     text: t('tut_2'), settings: false },
+    { targets: ['#user-hint-input','#analysis-mode-toggle'], text: t('tut_2'), settings: false },
     { target: '#setting-section-device',                   text: t('tut_3'), settings: true, openSection: '#setting-section-device' },
     { target: '#setting-section-api',                      text: t('tut_api'), settings: true, openSection: '#setting-section-api' },
     { target: '#setting-section-space',                    text: t('tut_4'), settings: true, openSection: '#setting-section-space' },
@@ -3382,6 +3388,17 @@ setComp(0.4);
 setTimeout(tutorialStart, 300);
 
 
+// ── HINT INPUT IME 패치 (한글 중복 입력 방지) ──
+const hintEl = document.getElementById('user-hint-input');
+if (hintEl) {
+  let _hintComposing = false;
+  hintEl.addEventListener('compositionstart', () => _hintComposing = true);
+  hintEl.addEventListener('compositionend', () => _hintComposing = false);
+  hintEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !_hintComposing) { hintEl.blur(); handleMic(); }
+  });
+}
+
 const micBtnEl = document.getElementById('mic-btn');
 micBtnEl.addEventListener('touchend', e => {
   e.preventDefault();
@@ -3555,6 +3572,10 @@ _ctrlMQ.addEventListener('change', initControlsPanel);
 
 <script>
 const APP_VERSION = 'v4';
+// Windows PWA / Chrome 등에서 스토리지 영구 보존 요청
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist();
+}
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
