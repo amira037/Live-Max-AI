@@ -32,7 +32,7 @@ You are a live PA sound engineer advisor.
 - Live PA only: consider feedback, room reflections, audience absorption
 - Harsh zone 2.5~5kHz / sibilance 6~8kHz: advise only if severe and clearly audible
 - Use: fader(db), group fader(db), compressor (Ratio/Attack/MakeupGain), EQ (with Q), low-cut, high-cut, shelving, reverb
-- Group Balance: Lead vs. Backing, Rhythm vs. Melody, Transient vs. Sustain, Vox vs Inst, 
+- [Group]: Lead vs. Backing, Rhythm vs. Melody, Transient vs. Sustain, Vox vs Inst, 
 
 타격감 있는 악기들과 길게 끌어주는 악기들의 에너지 대비입니다
 
@@ -61,12 +61,13 @@ You are a live PA sound engineer advisor.
    
 [CORE MIXING PROTOCOL]
 1. SCOPE CHECK
+Detect [Groups] 
 Band: Fader Balance → Group Balance → Frequency Masking → Precision EQ.
 Solo: Tonal EQ → Dynamics → Reverb.
 
 2. BAND HIERARCHY (Scenario A)
 Balance First: overall level relationship across all elements
-Group Balance : Evaluate the level relationship between the Groups, advise group Fader levels (+/- dB)
+[Group] Balance : Evaluate the level relationship between the Groups, advise group Fader levels (+/- dB)
 Anti-Masking: Resolve frequency clashes between parts.
 *Never jump to vocal tone advice before checking overall balance first.
 
@@ -2712,18 +2713,26 @@ ${t('ai_prompt')}`;
     const parts = data.candidates?.[0]?.content?.parts||[];
     const text = parts.filter(p=>p.text && !p.thought).map(p=>p.text).join('').trim();
     if (!text) throw new Error(t('err_empty'));
-    const lines = text.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
-    if (lines[0] === 'SILENT') {
+    // SCORE / CHANNELS를 위치·형식에 무관하게 전체 텍스트에서 추출
+    const scoreGlobal = text.match(/SCORE\s*:\s*(\d+)/i);
+    const score = scoreGlobal ? parseInt(scoreGlobal[1]) : null;
+    const channelGlobal = text.match(/CHANNELS\s*:\s*([^\n,][^\n]*)/i);
+    const channels = channelGlobal
+      ? channelGlobal[1].split(',').map(c=>c.trim()).filter(Boolean)
+      : [];
+
+    // SCORE/CHANNELS 태그를 제거한 순수 콘텐츠 줄만 추출
+    const cleaned = text
+      .replace(/SCORE\s*:\s*\d+[,\s]*/gi, '')
+      .replace(/CHANNELS\s*:[^\n]*/gi, '');
+    const lines = cleaned.split('\n').map(l=>l.trim().replace(/^[\-\*•]\s*/,'').replace(/^\p{Emoji_Presentation}\s*/u,'')).filter(Boolean);
+
+    if (lines[0] === 'SILENT' || text.trim() === 'SILENT') {
       if (statusEl) statusEl.remove();
       renderAnalysisCard(groupEl, { score: null, channels: [], problem: t('quiet_env') || '조용한 환경이 감지되었습니다. 믹스를 틀고 다시 시도하세요.', solutions: [] });
       return;
     }
-    const scoreMatch = lines[0]?.match(/^SCORE:(\d+)/);
-    const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-    let remaining = scoreMatch ? lines.slice(1) : lines;
-    const channelMatch = remaining[0]?.match(/^CHANNELS:(.+)/);
-    const channels = channelMatch ? channelMatch[1].split(',').map(c=>c.trim()).filter(Boolean) : [];
-    const contentLines = channelMatch ? remaining.slice(1) : remaining;
+    const contentLines = lines;
     const result = { score, channels, problem: contentLines[0]||'분석 완료', solutions: contentLines.slice(1) };
 
     // 히스토리 저장
