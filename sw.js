@@ -1,4 +1,4 @@
-const CACHE = 'live-max-ai-v0.9822';
+const CACHE = 'live-max-ai-v0.9823';
 const ASSETS = [
   '/',
   '/index.html',
